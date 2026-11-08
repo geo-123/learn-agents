@@ -1,12 +1,12 @@
-"""Lesson 07 — LLM-as-judge with a rubric.
+"""Lesson 07: LLM as judge with a rubric.
 
-We re-run the fixtures from 03_ but layer on a semantic judge: a
-separate chat() call that scores each answer 1-5 on faithfulness and
-helpfulness. The judge is a different "kind" of agent — its prompt is
+We rerun the fixtures from 03_ but layer on a semantic judge: a
+separate chat() call that scores each answer 1 to 5 on faithfulness and
+helpfulness. The judge is a different "kind" of agent: its prompt is
 a rubric, not an open task.
 
 Caveats (in the lesson README): position bias, verbosity bias,
-self-preference. Always document the judge model.
+self preference. Always document the judge model.
 
 Run:
     uv run python lessons/07_eval_tracing/04_llm_judge.py
@@ -33,7 +33,7 @@ sys.modules["_rag"] = _rag  # Python 3.13: @dataclass needs the module registere
 spec.loader.exec_module(_rag)
 
 
-JUDGE_MODEL = "claude-sonnet-4-5"  # explicitly different from default Haiku.
+JUDGE_MODEL = "claude-sonnet-5-5"  # explicitly different from (and stronger than) the default Haiku.
 
 
 class JudgeScore(BaseModel):
@@ -41,7 +41,7 @@ class JudgeScore(BaseModel):
         ge=1, le=5,
         description=(
             "1=fabricated, 3=partly supported, 5=fully grounded in the corpus. "
-            "If the agent says 'I don't know' for a genuinely out-of-scope question, "
+            "If the agent says 'I don't know' for a genuinely out of scope question, "
             "that's a 5."
         ),
     )
@@ -52,20 +52,13 @@ class JudgeScore(BaseModel):
     rationale: str = Field(description="One short sentence.")
 
 
-SUBMIT = {
-    "name": "submit_score",
-    "description": "Submit the rubric scores.",
-    "input_schema": JudgeScore.model_json_schema(),
-}
-
-
 JUDGE_SYSTEM = (
     "You are evaluating an AI assistant's answer to a question about the "
-    "Acme company handbook. Score the answer 1-5 on TWO axes: "
+    "Acme company handbook. Score the answer 1 to 5 on TWO axes: "
     "faithfulness (is the answer supported by the handbook?) and "
     "helpfulness (does it actually answer the question?). Be strict. "
     "If you don't have the handbook, judge based on whether the answer "
-    "looks specific, concrete, and likely-correct given a policy doc context."
+    "looks specific, concrete, and likely correct given a policy doc context."
 )
 
 
@@ -73,16 +66,17 @@ def judge(question: str, answer: str) -> JudgeScore:
     prompt = (
         f"QUESTION:\n{question}\n\n"
         f"ANSWER:\n{answer}\n\n"
-        "Score the answer using submit_score."
+        "Score the answer."
     )
     response = chat(
         messages=[{"role": "user", "content": prompt}],
         system=JUDGE_SYSTEM,
-        tools=[SUBMIT],
-        tool_choice={"type": "tool", "name": "submit_score"},
+        output_schema=JudgeScore,  # structured output: the scores come back typed
         model=JUDGE_MODEL,
     )
-    return JudgeScore.model_validate(response.tool_uses[0]["input"])
+    if response.parsed is None:
+        raise RuntimeError(f"judge gave no score (stop_reason={response.stop_reason})")
+    return response.parsed
 
 
 def main() -> None:

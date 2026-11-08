@@ -1,4 +1,4 @@
-"""Lesson 07 — pretty-print a JSONL trace as a tree.
+"""Lesson 07: pretty print a JSONL trace as a tree.
 
 Reads spans from a .jsonl file, rebuilds the parent/child tree, and
 prints it with timing and inline outputs.
@@ -6,7 +6,7 @@ prints it with timing and inline outputs.
 Run:
     uv run python lessons/07_eval_tracing/02_trace_viewer.py <path-to-jsonl>
 
-Or with no args — uses the most recent trace in traces/.
+Or with no args: uses the most recent trace in traces/.
 """
 from __future__ import annotations
 

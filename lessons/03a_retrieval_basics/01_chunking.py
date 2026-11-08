@@ -1,4 +1,4 @@
-"""Lesson 03a — three chunking strategies, side by side.
+"""Lesson 03a: three chunking strategies, side by side.
 
 We chunk every doc in data/corpus/ three different ways and print the
 boundaries so you can eyeball what each strategy preserves and what it
@@ -24,7 +24,7 @@ class Chunk:
     text: str
 
 
-# --- Strategy 1: fixed-size with overlap ---------------------------------
+# --- Strategy 1: fixed size with overlap ---------------------------------
 
 
 def chunk_fixed(doc: str, text: str, size: int = 400, overlap: int = 80) -> list[Chunk]:
@@ -38,16 +38,16 @@ def chunk_fixed(doc: str, text: str, size: int = 400, overlap: int = 80) -> list
     return chunks
 
 
-# --- Strategy 2: paragraph-aware ----------------------------------------
+# --- Strategy 2: paragraph aware ----------------------------------------
 
 
 def chunk_paragraphs(doc: str, text: str) -> list[Chunk]:
-    """Split on blank lines. Each non-empty paragraph is one chunk."""
+    """Split on blank lines. Each nonempty paragraph is one chunk."""
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
     return [Chunk(doc=doc, idx=i, text=p) for i, p in enumerate(paragraphs)]
 
 
-# --- Strategy 3: Markdown header-aware ----------------------------------
+# --- Strategy 3: Markdown header aware ----------------------------------
 
 
 def chunk_markdown(doc: str, text: str) -> list[Chunk]:
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     print(f"Loaded {len(docs)} docs from {CORPUS_DIR}")
 
     for strategy_name, fn in [
-        ("fixed-size (size=400, overlap=80)", chunk_fixed),
+        ("fixed size (size=400, overlap=80)", chunk_fixed),
         ("paragraphs", chunk_paragraphs),
         ("markdown headers", chunk_markdown),
     ]:

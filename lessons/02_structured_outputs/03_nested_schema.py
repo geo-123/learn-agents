@@ -1,11 +1,11 @@
-"""Lesson 02 — nested schemas and schema design.
+"""Lesson 02: nested schemas and schema design.
 
-A real extraction usually isn't one flat record — it's a tree.
+A real extraction usually isn't one flat record: it's a tree.
 A meeting has attendees and agenda items, each with their own fields.
 
 This file exercises three design choices:
   1. Lists of nested objects (attendees, agenda items)
-  2. Enums to discipline open-ended fields (priority)
+  2. Enums to discipline open ended fields (priority)
   3. Optional fields with explicit nulls when the source is silent
 
 Run:
@@ -33,7 +33,7 @@ class Attendee(BaseModel):
 
 
 class AgendaItem(BaseModel):
-    title: str = Field(description="One-line item summary.")
+    title: str = Field(description="One line item summary.")
     owner: str | None = Field(
         default=None,
         description="Name of the person responsible. null if no owner is named.",
@@ -41,7 +41,7 @@ class AgendaItem(BaseModel):
     priority: Literal["high", "medium", "low"] = Field(
         description=(
             "Inferred priority. Use 'high' for items explicitly flagged urgent, "
-            "blocker, or critical. 'low' for nice-to-haves. 'medium' otherwise."
+            "blocker, or critical. 'low' for nice to haves. 'medium' otherwise."
         ),
     )
 
@@ -56,27 +56,21 @@ class Meeting(BaseModel):
     agenda: list[AgendaItem]
 
 
-SUBMIT = {
-    "name": "submit_meeting",
-    "description": "Submit the extracted meeting structure.",
-    "input_schema": Meeting.model_json_schema(),
-}
-
-
 def extract(text: str) -> Meeting:
     response = chat(
         messages=[{"role": "user", "content": f"Extract a meeting from:\n\n{text}"}],
-        tools=[SUBMIT],
-        tool_choice={"type": "tool", "name": "submit_meeting"},
+        output_schema=Meeting,  # nested models and lists work the same way
     )
-    return Meeting.model_validate(response.tool_uses[0]["input"])
+    if response.parsed is None:
+        raise RuntimeError(f"no structured answer (stop_reason={response.stop_reason})")
+    return response.parsed
 
 
 SAMPLE = """\
 2025-03-14 product sync. Present: Maria Lopez (CTO), John Smith (Eng),
-Priya Rao (Design). Agenda: (1) Auth migration — Maria, blocker for Q2.
-(2) Mobile redesign mocks — Priya, nice-to-have for next sprint.
-(3) Cost review — owner TBD, regular cadence.
+Priya Rao (Design). Agenda: (1) Auth migration: Maria, blocker for Q2.
+(2) Mobile redesign mocks: Priya, nice to have for next sprint.
+(3) Cost review: owner TBD, regular cadence.
 """
 
 

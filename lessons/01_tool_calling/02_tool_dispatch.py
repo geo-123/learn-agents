@@ -1,4 +1,4 @@
-"""Lesson 01 — the load-bearing dispatch pattern.
+"""Lesson 01: the load bearing dispatch pattern.
 
 This file is the heart of the lesson. Read it twice.
 
@@ -106,7 +106,7 @@ REGISTRY: dict[str, Tool] = {
 
 
 def dispatch(tool_use: dict[str, Any]) -> dict[str, Any]:
-    """Run one tool call. Always returns a well-shaped tool_result block.
+    """Run one tool call. Always returns a well shaped tool_result block.
 
     Three error paths, each handled:
         - Unknown tool name (model hallucination).
@@ -128,7 +128,7 @@ def dispatch(tool_use: dict[str, Any]) -> dict[str, Any]:
 
     try:
         result = tool.fn(args)
-    except Exception as e:  # noqa: BLE001 — tools are arbitrary code; surface anything
+    except Exception as e:  # noqa: BLE001: tools are arbitrary code; surface anything
         return _err(use_id, f"Tool {name!r} raised: {type(e).__name__}: {e}")
 
     return {
@@ -178,7 +178,7 @@ def run_agent(task: str, *, max_steps: int = 6) -> str:
 
 
 if __name__ == "__main__":
-    # Try changing the question. Try asking about Paris (an unknown city) —
+    # Try changing the question. Try asking about Paris (an unknown city):
     # watch the model recover by calling list_cities first.
     final = run_agent(
         "What's the weather like in Tokyo and Paris? If Paris isn't supported, "

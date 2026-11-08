@@ -1,11 +1,11 @@
-"""Lesson 10 — capstone eval runner.
+"""Lesson 10: capstone eval runner.
 
 Runs the capstone agent against fixtures.jsonl. Each fixture asserts:
   - The answer contains required substrings (or any of them, if match_any).
   - Citations include at least one expected doc.
   - Confidence is within an expected band.
 
-Prints per-fixture pass/fail, then a summary. Traces land in traces/.
+Prints per fixture pass/fail, then a summary. Traces land in traces/.
 
 Run:
     uv run python lessons/10_capstone/run_evals.py

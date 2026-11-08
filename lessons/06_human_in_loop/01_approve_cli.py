@@ -1,8 +1,8 @@
-"""Lesson 06 — inline approval before risky tools.
+"""Lesson 06: inline approval before risky tools.
 
 A `send_email` tool gets a require_approval wrapper. Before each call,
 the harness prints the args and asks y/n/edit. Approved -> tool runs.
-Rejected -> tool_result with is_error so the agent can re-plan. Edited
+Rejected -> tool_result with is_error so the agent can replan. Edited
 -> tool runs with the mutated args.
 
 Run:
@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from src._llm import chat
 
 
-SENT_EMAILS: list[dict] = []  # in-memory side-effect log
+SENT_EMAILS: list[dict] = []  # in memory side effect log
 
 
 class SendEmailArgs(BaseModel):
@@ -102,7 +102,7 @@ REGISTRY: dict[str, Tool] = {t.name: t for t in [
          "Returns the user's full name.",
          GetUserNameArgs, get_user_name, needs_approval=False),
     Tool("send_email",
-         "Sends an email. Real side effect — use only when the user has asked.",
+         "Sends an email. Real side effect: use only when the user has asked.",
          SendEmailArgs, send_email, needs_approval=True),
 ]}
 
@@ -136,7 +136,7 @@ def _err(use_id: str, msg: str) -> dict:
 SYSTEM = (
     "You are an assistant that can send emails on the user's behalf. "
     "Always look up the user's name first if you need it. "
-    "If a user-approval step rejects your action, do NOT retry the same "
+    "If a user approval step rejects your action, do NOT retry the same "
     "action; ask the user what they want to do instead."
 )
 
@@ -166,7 +166,7 @@ def run_agent(task: str, *, max_steps: int = 6) -> str:
 
 if __name__ == "__main__":
     answer = run_agent(
-        "Send a one-line email to alice@example.com inviting her to coffee "
+        "Send a one line email to alice@example.com inviting her to coffee "
         "tomorrow at 10am. Sign it with my name."
     )
     print(f"\n=== final ===\n{answer}")

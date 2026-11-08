@@ -1,9 +1,9 @@
-"""Lesson 08 — output guard.
+"""Lesson 08: output guard.
 
 Runs on the LLM's response BEFORE returning to the user. Two layers:
-  1. Regex redaction (emails, phone-like patterns).
-  2. LLM-as-guard: is the response on-topic for an Acme handbook agent?
-     If off-topic, replace with a polite refusal.
+  1. Regex redaction (emails, phone like patterns).
+  2. LLM as guard: is the response on topic for an Acme handbook agent?
+     If off topic, replace with a polite refusal.
 
 Run:
     uv run python lessons/08_guardrails/02_output_guard.py
@@ -42,12 +42,12 @@ def redact_pii(text: str) -> tuple[str, list[str]]:
         text = EMAIL_RE.sub("[email redacted]", text)
     n_phone = len(PHONE_RE.findall(text))
     if n_phone:
-        reasons.append(f"redacted {n_phone} phone-like number(s)")
+        reasons.append(f"redacted {n_phone} phone like number(s)")
         text = PHONE_RE.sub("[phone redacted]", text)
     return text, reasons
 
 
-# --- LLM-as-guard: rubric-based on-topic check ----------------------------
+# --- LLM as guard: rubric based on topic check ----------------------------
 
 
 class OnTopicVerdict(BaseModel):
@@ -61,17 +61,11 @@ class OnTopicVerdict(BaseModel):
     reason: str = Field(description="One short sentence.")
 
 
-GUARD_TOOL = {
-    "name": "submit_verdict",
-    "description": "Submit the on-topic verdict.",
-    "input_schema": OnTopicVerdict.model_json_schema(),
-}
-
 GUARD_SYSTEM = (
     "You are an output guardrail. You are given an AI assistant's response. "
-    "Decide if the response is plausibly about Acme's company policies — "
+    "Decide if the response is plausibly about Acme's company policies: "
     "things you'd expect to find in an employee handbook. Be strict: small "
-    "talk, jokes, or general knowledge are NOT on-topic."
+    "talk, jokes, or general knowledge are NOT on topic."
 )
 
 
@@ -79,10 +73,13 @@ def is_on_topic(text: str) -> OnTopicVerdict:
     response = chat(
         messages=[{"role": "user", "content": f"Response to check:\n\n{text}"}],
         system=GUARD_SYSTEM,
-        tools=[GUARD_TOOL],
-        tool_choice={"type": "tool", "name": "submit_verdict"},
+        output_schema=OnTopicVerdict,  # structured output (Lesson 02)
+        effort="low",  # a guard must be fast and cheap
     )
-    return OnTopicVerdict.model_validate(response.tool_uses[0]["input"])
+    if response.parsed is None:
+        # Fail closed: a guard that cannot decide blocks the response.
+        return OnTopicVerdict(on_topic=False, reason=f"guard gave no verdict ({response.stop_reason})")
+    return response.parsed
 
 
 # --- Composite output guard ----------------------------------------------
@@ -96,9 +93,9 @@ def output_guard(text: str) -> GuardResult:
             allowed=False,
             text=(
                 "I can only answer questions about Acme company policies. "
-                f"(off-topic — {verdict.reason})"
+                f"(off topic: {verdict.reason})"
             ),
-            reasons=[*redact_reasons, f"off-topic: {verdict.reason}"],
+            reasons=[*redact_reasons, f"off topic: {verdict.reason}"],
         )
     return GuardResult(allowed=True, text=text, reasons=redact_reasons)
 
@@ -120,10 +117,10 @@ def safe_chat(user_text: str) -> str:
 
 if __name__ == "__main__":
     samples = [
-        "What is Acme's vacation policy in one sentence?",       # on-topic + PII-free
-        "What is the capital of France?",                          # off-topic
-        "Tell me a joke.",                                         # off-topic
-        "How can I reach IT? Their number is +1-555-867-5309.",   # phone in response, on-topic
+        "What is Acme's vacation policy in one sentence?",       # on topic + PII free
+        "What is the capital of France?",                          # off topic
+        "Tell me a joke.",                                         # off topic
+        "How can I reach IT? Their number is +1-555-867-5309.",   # phone in response, on topic
     ]
     for s in samples:
         print(f"final  : {safe_chat(s)}")

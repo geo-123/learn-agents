@@ -1,29 +1,29 @@
-"""Lesson 00 — the loop, with layered stop conditions.
+"""Lesson 00: the loop, with layered stop conditions.
 
 01_loop.py used a single, fabricated stop signal: the word DONE in the
 response. That works, but real loops need defense in depth. This file
 shows four kinds of stop, in priority order:
 
-  1. Budget (hard stop)         — max steps / max seconds / max tokens.
-                                  The ANTI-RUNAWAY defense. Always have one.
-  2. stop_reason == "end_turn"  — the GRACEFUL, model-initiated signal.
+  1. Budget (hard stop): max steps / max seconds / max tokens.
+                                  The ANTI RUNAWAY defense. Always have one.
+  2. stop_reason == "end_turn": the GRACEFUL, model initiated signal.
                                   Universal across providers (see note below).
-  3. Stall detector             — same text two turns in a row.
+  3. Stall detector: same text two turns in a row.
                                   Catches "stuck" loops the model can't
                                   recognize itself.
-  4. DONE keyword (kept from 01)— a task-specific, explicit signal.
+  4. DONE keyword (kept from 01): a task specific, explicit signal.
                                   Useful when downstream code needs an
                                   unambiguous "agent declared completion"
                                   marker beyond stop_reason.
 
-Note on cross-provider portability of `stop_reason`:
+Note on cross provider portability of `stop_reason`:
     Anthropic    : stop_reason = "end_turn" | "max_tokens" | "tool_use" | "stop_sequence"
     OpenAI       : finish_reason = "stop"   | "length"     | "tool_calls" | "content_filter"
     Google Gemini: finish_reason = "STOP"   | "MAX_TOKENS" | "SAFETY"     | ...
-The *names* differ; the *concept* is universal: every chat-completion
+The *names* differ; the *concept* is universal: every chat completion
 API tells you why generation stopped. "end_turn"/"stop"/"STOP" is the
 graceful "I'm done speaking for now" signal. "max_tokens"/"length"
-means the response was TRUNCATED — don't treat that as done.
+means the response was TRUNCATED: don't treat that as done.
 
 Run:
     uv run python lessons/00_mental_model/02_loop_with_budget.py
@@ -42,7 +42,7 @@ from src._llm import chat
 
 SYSTEM = (
     "You are a brainstorming agent. RULES: on each turn, propose exactly ONE "
-    "item with a one-sentence rationale, then stop and wait for the user to "
+    "item with a one sentence rationale, then stop and wait for the user to "
     "say 'Continue.' Do not list multiple items in a single turn. "
     "When and only when you have produced the number requested, end your "
     "final message with the word DONE on its own line."
@@ -51,7 +51,7 @@ SYSTEM = (
 
 @dataclass
 class Budget:
-    """Stop-condition aggregator. Any field tripping ends the loop."""
+    """Stop condition aggregator. Any field tripping ends the loop."""
     max_steps: int = 5
     max_input_tokens: int = 20_000
     max_seconds: float = 30.0
@@ -109,10 +109,10 @@ def run_agent(task: str, budget: Budget) -> list[dict]:
 
         # --- Stop check 3: end_turn (graceful, universal) ------------------
         # The model signaled it's done speaking. Take it at face value
-        # unless DONE-keyword logic below adds more nuance.
+        # unless DONE keyword logic below adds more nuance.
         if response.stop_reason == "end_turn":
             # If the task asked for an explicit DONE marker and the model
-            # didn't include it, that's slightly suspicious — log it but
+            # didn't include it, that's slightly suspicious: log it but
             # accept end_turn as the authority.
             current = response.text.strip()
             if current.endswith("DONE"):
@@ -132,7 +132,7 @@ def run_agent(task: str, budget: Budget) -> list[dict]:
             return messages
         previous_text = current
 
-        # The model didn't end_turn yet — nudge it to continue.
+        # The model didn't end_turn yet: nudge it to continue.
         messages.append({"role": "user", "content": "Continue."})
 
 
@@ -140,8 +140,8 @@ if __name__ == "__main__":
     # The task asks for MORE items than max_steps allows, so the budget's
     # hard cap fires before the model can say DONE. You should see step 1..4,
     # each with one name, then `[stop] budget exhausted: max_steps=4`.
-    # To see the graceful end_turn path instead, raise max_steps to 7 — the
+    # To see the graceful end_turn path instead, raise max_steps to 7: the
     # model will produce all 6 names, say DONE, and stop_reason="end_turn"
     # ends the loop before the budget trips.
-    task = "Propose 6 names for a new note-taking app aimed at developers."
+    task = "Propose 6 names for a new note taking app aimed at developers."
     run_agent(task, Budget(max_steps=4, max_input_tokens=10_000, max_seconds=60))

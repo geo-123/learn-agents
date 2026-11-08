@@ -1,4 +1,4 @@
-"""Lesson 10 — capstone research agent.
+"""Lesson 10: capstone research agent.
 
 Synthesizes every prior topic into one runnable program. Reads like a
 synthesis of every file before it; intentionally denser than any one
@@ -91,7 +91,7 @@ class Tracer:
 
 
 # -------------------------------------------------------------------------
-# Input guard (Lesson 08). Refuses off-topic / PII.
+# Input guard (Lesson 08). Refuses off topic / PII.
 # -------------------------------------------------------------------------
 INJECTION = re.compile(r"ignore (the )?(previous|prior|above)", re.I)
 SSN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
@@ -168,7 +168,7 @@ class ResearchReport(BaseModel):
     answer: str = Field(description="The answer in plain prose.")
     citations: list[str] = Field(description="Chunk ids you used.")
     confidence: float = Field(ge=0.0, le=1.0)
-    used_memory: bool = Field(description="True if you read from long-term memory.")
+    used_memory: bool = Field(description="True if you read from long term memory.")
 
 
 def submit_report(args: ResearchReport) -> dict:
@@ -200,7 +200,7 @@ REGISTRY: dict[str, Tool] = {t.name: t for t in [
          "Save a fact about the user for future sessions. Use sparingly.",
          RememberArgs, remember),
     Tool("recall",
-         "Look up a previously-saved fact about the user.",
+         "Look up a previously saved fact about the user.",
          RecallArgs, recall),
     Tool("ask_user",
          "Ask the user ONE clarifying question when their request is ambiguous. "
@@ -359,7 +359,7 @@ def run_agent(question: str) -> tuple[ResearchReport | None, Path]:
                     try:
                         report = ResearchReport.model_validate(tu["input"])
                     except ValidationError as e:
-                        # Schema-repair retry (Lesson 02/05).
+                        # Schema repair retry (Lesson 02/05).
                         messages.append({
                             "role": "user",
                             "content": (
@@ -372,7 +372,7 @@ def run_agent(question: str) -> tuple[ResearchReport | None, Path]:
 
             if response.stop_reason != "tool_use":
                 # Model gave a final text without calling submit_report.
-                # Treat as an error — we expected a report.
+                # Treat as an error: we expected a report.
                 run_out["error"] = "model did not call submit_report"
                 break
 

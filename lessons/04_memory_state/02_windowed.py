@@ -1,4 +1,4 @@
-"""Lesson 04 — windowed conversation memory.
+"""Lesson 04: windowed conversation memory.
 
 Keep only the last N user+assistant turn pairs. The system prompt is
 always preserved (it lives outside the messages list anyway), and the
@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from src._llm import chat
+from src._llm import chat, strip_thinking
 
 
 SYSTEM = "You are a helpful, concise assistant."
@@ -52,6 +52,11 @@ def repl() -> None:
         # Trim *before* sending. The full history stays in memory for
         # display/debugging; only the trimmed view is sent.
         view = trim(messages)
+        if len(view) != len(messages):
+            # Trimming changed the start of the history, so the thinking blocks
+            # of the kept turns no longer match what came before them. Current
+            # models reject such blocks; strip them from the trimmed view.
+            view = strip_thinking(view)
         response = chat(view, system=SYSTEM)
         messages.append({"role": "assistant", "content": response.content})
 

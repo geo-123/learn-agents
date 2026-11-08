@@ -1,4 +1,4 @@
-"""Lesson 06 — policy-table-driven approvals.
+"""Lesson 06: policy table driven approvals.
 
 Each tool registers with a policy: 'auto' (just run), 'confirm' (ask the
 user), or 'block' (never allowed even if the model asks). The dispatcher
@@ -64,7 +64,7 @@ class DeleteFileArgs(BaseModel):
 
 
 def delete_file(args: DeleteFileArgs) -> dict:
-    """Tool exists in the registry but policy is 'block' — never runs."""
+    """Tool exists in the registry but policy is 'block': never runs."""
     Path(args.path).unlink(missing_ok=True)
     return {"deleted": args.path}
 
@@ -93,7 +93,7 @@ REGISTRY: dict[str, Tool] = {t.name: t for t in [
          "Post a message to a Slack channel.",
          SendSlackArgs, send_slack, policy="confirm"),
     Tool("delete_file",
-         "Delete a file. ALWAYS BLOCKED — never executes via the agent.",
+         "Delete a file. ALWAYS BLOCKED: never executes via the agent.",
          DeleteFileArgs, delete_file, policy="block"),
 ]}
 

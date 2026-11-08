@@ -1,8 +1,8 @@
-"""Lesson 03b — RAG with verifiable citations.
+"""Lesson 03b: RAG with verifiable citations.
 
 The agent's final answer must declare the chunk ids it used. Then we
 verify, after the fact, that those chunks actually contain phrases
-from the answer. A trust-but-verify pattern.
+from the answer. A trust but verify pattern.
 
 Run:
     uv run python lessons/03b_rag_in_loop/03_with_citations.py
@@ -125,7 +125,7 @@ SYSTEM = (
     "Answer questions about Acme using ONLY the handbook. Use search_docs to "
     "look things up. When you have the answer, call submit_answer with a "
     "concise answer, the list of chunk ids you actually used, and your "
-    "confidence (0-1). Do not invent citations."
+    "confidence (0 to 1). Do not invent citations."
 )
 
 
@@ -156,7 +156,7 @@ def run_agent(question: str) -> FinalAnswer | None:
 
 def verify_citations(answer: FinalAnswer) -> tuple[bool, str]:
     """Check that cited chunks exist and that the answer's key terms
-    appear in at least one cited chunk. A crude verifier — Lesson 07
+    appear in at least one cited chunk. A crude verifier: Lesson 07
     will show better evaluators."""
     for cid in answer.citations:
         if cid not in CHUNK_TEXTS:
@@ -193,4 +193,4 @@ if __name__ == "__main__":
         print(f"Citations: {result.citations}")
         print(f"Confidence: {result.confidence:.2f}")
         ok, why = verify_citations(result)
-        print(f"Verify:    {'PASS' if ok else 'FAIL'} — {why}")
+        print(f"Verify:    {'PASS' if ok else 'FAIL'}: {why}")

@@ -1,4 +1,4 @@
-"""Lesson 06 — durable pause and resume.
+"""Lesson 06: durable pause and resume.
 
 The agent runs until it needs human approval, then SERIALIZES itself to
 disk and exits. A human later approves (by editing the state file or
@@ -6,7 +6,7 @@ running --approve). On resume, the agent loads its state and continues
 exactly where it stopped.
 
 This is the toy version of the pattern used in async approval workflows
-(Slack approvals, email-based escalations, multi-day reviews).
+(Slack approvals, email based escalations, multi day reviews).
 
 Run:
     1. First run (will pause and serialize):
@@ -97,7 +97,7 @@ def dispatch(tool_use: dict, messages: list[dict]) -> dict:
         return _err(use_id, f"invalid args: {e.errors()}")
 
     if tool.needs_approval:
-        # Don't decide here — bubble out so the caller can serialize.
+        # Don't decide here: bubble out so the caller can serialize.
         raise PauseForApproval(tool_use=tool_use, messages=messages)
 
     try:

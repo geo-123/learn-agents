@@ -1,13 +1,13 @@
-"""Lesson 02b — prompt caching, the silent-invalidation failure.
+"""Lesson 02b: prompt caching, the silent invalidation failure.
 
 A common production mistake: a "static" system prompt that actually
-includes the current timestamp, request id, or other per-request
+includes the current timestamp, request id, or other per request
 content. The cache_control marker is present, but every call writes a
 fresh cache entry instead of reading an existing one. The metrics show
 `created` climbing every turn while `read` stays at zero.
 
 We reproduce the failure here by stamping the system prompt with a
-high-precision timestamp on every call. Then we fix it by moving the
+high precision timestamp on every call. Then we fix it by moving the
 volatile content into the user message, below the cache breakpoint.
 
 Run:
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     report("FIXED:  timestamp moved to the user message", call_fixed)
 
     print(
-        "\nBroken pattern: `created` is high every turn, `read` is always 0 — "
+        "\nBroken pattern: `created` is high every turn, `read` is always 0: "
         "you're paying the write price on every call. "
-        "Fixed pattern: turn 1 writes, turns 2-3 read."
+        "Fixed pattern: turn 1 writes, turns 2 to 3 read."
     )

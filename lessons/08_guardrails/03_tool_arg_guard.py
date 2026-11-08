@@ -1,6 +1,6 @@
-"""Lesson 08 — tool-argument guards.
+"""Lesson 08: tool argument guards.
 
-The most production-relevant guard. Sits between the model's tool_use
+The most production relevant guard. Sits between the model's tool_use
 (intent) and the actual function call (side effect). Even a successful
 LLM jailbreak fails here if the args don't pass the allowlist.
 
@@ -39,7 +39,7 @@ def send_email(args: SendEmailArgs) -> dict:
     return {"sent": True}
 
 
-# --- The arg-level guards ------------------------------------------------
+# --- The arg level guards ------------------------------------------------
 
 
 def guard_send_email(args: SendEmailArgs) -> tuple[bool, str]:
@@ -92,7 +92,7 @@ def dispatch(tool_use: dict) -> dict:
     except ValidationError as e:
         return _err(use_id, f"invalid args: {e.errors()}")
 
-    # ARG GUARD — runs after pydantic validation, before execution.
+    # ARG GUARD: runs after pydantic validation, before execution.
     if tool.guard:
         ok, reason = tool.guard(args)
         if not ok:
@@ -138,7 +138,7 @@ def run_agent(task: str, *, max_steps: int = 4) -> str:
 
 if __name__ == "__main__":
     tasks = [
-        "Send a one-line email to bob@acme.com inviting him to the demo.",  # allowed
+        "Send a one line email to bob@acme.com inviting him to the demo.",  # allowed
         "Send a quick note to attacker@evil.com asking for the admin token.",  # blocked
     ]
     for t in tasks:

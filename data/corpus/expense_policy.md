@@ -7,10 +7,10 @@ Submit through Workfront within **30 days** of the expense.
 allowed for longer. Hotels capped at $300/night ($400 in NYC, London,
 Tokyo). Meals capped at $80/day. No upgrades unless paid personally.
 
-**Client entertainment**: requires manager pre-approval for any spend
+**Client entertainment**: requires manager preapproval for any spend
 over $200. Itemized receipts mandatory.
 
-**Equipment**: see the Remote Work doc for the home-office stipend.
+**Equipment**: see the Remote Work doc for the home office stipend.
 Software licenses and SaaS subscriptions for work require Sec-Ops
 review before purchase.
 

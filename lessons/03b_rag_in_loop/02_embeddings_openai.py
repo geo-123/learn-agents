@@ -1,4 +1,4 @@
-"""Lesson 03b — swap TF-IDF for real embeddings.
+"""Lesson 03b: swap TF-IDF for real embeddings.
 
 Same `search(query, k) -> list[Hit]` interface. Different implementation.
 The agent code from 01_rag_tool.py would work unchanged if you point it
@@ -39,7 +39,7 @@ sys.modules["_tfidf"] = _tfidf  # Python 3.13: @dataclass needs the module regis
 spec.loader.exec_module(_tfidf)
 
 sys.path.insert(0, str(HERE.parents[1]))
-from src._llm import load_dotenv  # noqa: F401 — triggers .env load
+from src._llm import load_dotenv  # noqa: F401: triggers .env load
 
 # We import openai lazily so this module imports cleanly without the dep.
 try:
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     queries = [
         "I want to take time off",          # Paraphrase TF-IDF struggled with.
         "Where do I report a phishing email?",
-        "What's the on-call pager stipend?",
+        "What's the on call pager stipend?",
         "Can I work abroad?",                # Synonyms for "from another country".
     ]
     for q in queries:

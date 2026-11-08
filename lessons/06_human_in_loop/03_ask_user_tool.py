@@ -1,8 +1,8 @@
-"""Lesson 06 — ask_user as a distinct primitive.
+"""Lesson 06: ask_user as a distinct primitive.
 
 ask_user is NOT approval. It's the model requesting missing information.
 The agent pauses the loop, prompts the human, and resumes with the
-answer as a tool_result. This is different from approval — there's no
+answer as a tool_result. This is different from approval: there's no
 proposal to approve, just a question to answer.
 
 Run:
@@ -121,7 +121,7 @@ def run_agent(task: str, *, max_steps: int = 8) -> str:
         results = [dispatch(tu) for tu in response.tool_uses]
         messages.append({"role": "user", "content": results})
 
-        # If the model called submit_itinerary, we can stop — the agent is done.
+        # If the model called submit_itinerary, we can stop: the agent is done.
         if any(tu["name"] == "submit_itinerary" for tu in response.tool_uses):
             return "itinerary submitted"
 

@@ -1,4 +1,4 @@
-"""Lesson 01 — parallel tool calls.
+"""Lesson 01: parallel tool calls.
 
 A capable model batches independent tool calls into one turn. We give it
 three tools and ask a question that needs all three. Watch the response:
@@ -55,8 +55,8 @@ def get_time(args: GetTimeArgs) -> dict:
 
 class ConvertCurrencyArgs(BaseModel):
     amount: float
-    from_: str = Field(alias="from", description="3-letter ISO currency code.")
-    to: str = Field(description="3-letter ISO currency code.")
+    from_: str = Field(alias="from", description="3 letter ISO currency code.")
+    to: str = Field(description="3 letter ISO currency code.")
 
 
 def convert_currency(args: ConvertCurrencyArgs) -> dict:
@@ -138,9 +138,9 @@ def run_agent(task: str, *, max_steps: int = 4) -> str:
 
         # "Parallel" here is about the *model's* output shape: one turn with
         # N tool_use blocks instead of N turns with one each. That saves N-1
-        # model round-trips (latency + tokens) — the real win.
+        # model round trips (latency + tokens): the real win.
         # Execution below is still sequential. For true concurrency on
-        # I/O-bound tools, swap this list-comp for ThreadPoolExecutor.map or
+        # I/O bound tools, swap this list comp for ThreadPoolExecutor.map or
         # asyncio.gather. Not done here to keep the lesson focused.
         results = [dispatch(tu) for tu in response.tool_uses]
         print(f"  -> dispatched {len(results)} tool call(s) in one turn")

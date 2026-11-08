@@ -1,6 +1,6 @@
-"""Lesson 02b — prompt caching, basic hit demo.
+"""Lesson 02b: prompt caching, basic hit demo.
 
-Two calls. Same large cache-marked system prompt, different user
+Two calls. Same large cache marked system prompt, different user
 questions. Turn 1 writes the cache; turn 2 reads it. The hit shows up
 as `cache_read_input_tokens > 0`.
 
@@ -22,8 +22,9 @@ CORPUS_DIR = Path(__file__).resolve().parents[2] / "data" / "corpus"
 def load_handbook() -> str:
     """Concatenate every doc in the corpus to form the stable prefix.
 
-    Anthropic's minimum cacheable span is 1024 tokens on Sonnet/Opus
-    and 2048 on Haiku. The Acme handbook (~3K tokens) clears both.
+    The minimum cacheable prefix depends on the model: 512 tokens on the
+    current generation (Haiku 5.5, Sonnet 5.5, Opus 5.5), up to 4096 on
+    some older models. The Acme handbook (~3K tokens) clears the current one.
     """
     docs: list[str] = []
     for path in sorted(CORPUS_DIR.glob("*.md")):
@@ -33,10 +34,10 @@ def load_handbook() -> str:
 
 HANDBOOK = load_handbook()
 
-# The cache minimum is model-dependent: ~1024 tokens for Sonnet/Opus,
-# but empirically ~4096 for Haiku 4.5 (documented as 2048 but the
-# docs are stale as of May 2026). We repeat the handbook three times
-# so the prefix clears the Haiku threshold safely.
+# The cache minimum is model dependent and not monotonic across
+# generations: 512 tokens on Haiku 5.5, but 4096 on Haiku 4.5 and Opus 4.6.
+# We repeat the handbook three times so the prefix clears every threshold,
+# whichever model LEARN_AGENTS_MODEL selects.
 SYSTEM_PREFIX = (
     "You are Acme's internal handbook assistant. Answer ONLY from the "
     "handbook below. If the handbook does not cover the question, say so. "
@@ -69,14 +70,14 @@ def ask(user_text: str) -> None:
 
 if __name__ == "__main__":
     print("\n--- Turn 1: cache miss (first time the model sees this prefix) ---")
-    ask("How many vacation days do full-time employees get?")
+    ask("How many vacation days do full time employees get?")
 
     print("\n--- Turn 2: cache hit (same prefix, different question) ---")
     ask("What's the wellness benefit?")
 
     # The point: on turn 2, `read` should be roughly equal to the prefix
     # length and `created` should be 0. Without caching, turn 2 would
-    # have re-paid the full input cost.
+    # have repaid the full input cost.
     print(
         "\nIf turn 2 shows `read` ≈ the prefix size and `created` = 0,"
         " the cache is doing its job."

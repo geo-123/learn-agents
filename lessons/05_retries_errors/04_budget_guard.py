@@ -1,4 +1,4 @@
-"""Lesson 05 — budget guards.
+"""Lesson 05: budget guards.
 
 Every retry layer can run away. The outermost defense is a budget:
 caps on steps, wall time, and cumulative input tokens. The loop checks
@@ -22,7 +22,7 @@ from src._llm import chat
 
 @dataclass
 class Budget:
-    """Stop-condition aggregator. Any field tripping ends the loop."""
+    """Stop condition aggregator. Any field tripping ends the loop."""
     max_steps: int = 6
     max_seconds: float = 20.0
     max_input_tokens: int = 8_000
@@ -85,16 +85,16 @@ def run_agent(task: str, budget: Budget) -> str:
             return response.text
 
         # If we had tools, we'd dispatch here. For this lesson we just loop
-        # text-only to keep the focus on budgeting.
+        # text only to keep the focus on budgeting.
         messages.append({"role": "user", "content": "Continue."})
 
 
 if __name__ == "__main__":
-    # Tight budget on purpose — the agent should hit a cap before finishing
+    # Tight budget on purpose: the agent should hit a cap before finishing
     # whatever rambling task we give it.
     budget = Budget(max_steps=3, max_seconds=10, max_input_tokens=3000)
     answer = run_agent(
-        "Outline a 10-step plan for migrating a monolith to microservices. "
+        "Outline a 10 step plan for migrating a monolith to microservices. "
         "Take your time and be thorough.",
         budget,
     )
