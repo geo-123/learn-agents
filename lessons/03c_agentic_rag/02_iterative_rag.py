@@ -1,9 +1,9 @@
-"""Lesson 03c — Iterative (agentic) RAG.
+"""Lesson 03c: Iterative (agentic) RAG.
 
 The agent searches, reflects on whether the retrieved chunks actually
 answer the question, and decides between answering and searching again
 with a refined query. The reflection is the difference between this and
-03b's one-shot retrieve-then-answer.
+03b's one shot retrieve then answer.
 
 The trace prints every step so you can see the loop in action: query,
 hit ids, the model's reasoning, and ultimately the final answer with
@@ -41,7 +41,7 @@ BM25 = _hybrid.BM25Index(CHUNKS)
 
 
 def hybrid_search(query: str, k: int = 4) -> list[dict]:
-    """Run both rankers, fuse with RRF, return the top-k as plain dicts.
+    """Run both rankers, fuse with RRF, return the top k as plain dicts.
 
     The agent doesn't know or care that two rankers are involved. From
     its perspective there is just `search_docs`. Swap implementations
@@ -63,7 +63,7 @@ SEARCH_TOOL = {
     "description": (
         "Search the Acme handbook for passages relevant to a query. Returns "
         "ranked chunks, each with an 'id', 'text', and 'score'. Use the id "
-        "values when citing in your final answer. Searches are cheap — call "
+        "values when citing in your final answer. Searches are cheap: call "
         "it multiple times with refined queries when a single search isn't "
         "enough."
     ),
@@ -86,13 +86,13 @@ You have one tool: search_docs(query, k). Follow this loop strictly:
 2. Before answering, ask yourself out loud: do the retrieved chunks actually
    contain a complete, grounded answer to the user's question? Name which
    chunk supports which part of the answer.
-3. If the answer is incomplete — missing a sub-question, or the retrieved
-   chunks use different vocabulary than the question — search again with a
+3. If the answer is incomplete: missing a subquestion, or the retrieved
+   chunks use different vocabulary than the question: search again with a
    refined query. Examples of refinement: broaden ("vacation" instead of
-   "PTO"), narrow, or aim at a missing sub-question.
+   "PTO"), narrow, or aim at a missing subquestion.
 4. When you have a complete grounded answer, write it as plain prose with
    inline citations like [security.md#4]. Do not call search_docs again.
-5. If two or three searches yield nothing useful, say so honestly — do not
+5. If two or three searches yield nothing useful, say so honestly: do not
    invent facts. "The handbook does not cover X" is a valid answer.
 
 Keep queries short and specific. Cite every claim."""
@@ -105,7 +105,7 @@ def dispatch(tool_use: dict) -> dict:
         return _err(use_id, f"unknown tool {name!r}")
     query = inp.get("query")
     if not isinstance(query, str) or not query.strip():
-        return _err(use_id, "query must be a non-empty string")
+        return _err(use_id, "query must be a nonempty string")
     k = inp.get("k", 4)
     hits = hybrid_search(query, k=int(k))
     return {
@@ -139,7 +139,7 @@ def run_agent(question: str, *, max_steps: int = 5) -> str:
             return response.text
 
         results = [dispatch(tu) for tu in response.tool_uses]
-        # Print the chunk ids the agent will see next turn — they're the
+        # Print the chunk ids the agent will see next turn: they're the
         # input to the next reflection.
         for r in results:
             if r.get("is_error"):
@@ -156,7 +156,7 @@ def run_agent(question: str, *, max_steps: int = 5) -> str:
 
 if __name__ == "__main__":
     questions = [
-        # Multi-hop: needs a search for SEV-1 paging *and* one for the
+        # Multi hop: needs a search for SEV-1 paging *and* one for the
         # postmortem deadline. Both facts live in incident_response.md
         # but in different paragraph chunks.
         "If I'm paged for a SEV-1 after midnight, what stipend do I get and "

@@ -1,7 +1,7 @@
-"""Lesson 03a — LLM reranking.
+"""Lesson 03a: LLM reranking.
 
-Two-stage retrieval: cheap top-N first, then an LLM picks the best K.
-Reranking is the highest-leverage quality lever most beginners skip.
+Two stage retrieval: cheap top N first, then an LLM picks the best K.
+Reranking is the highest leverage quality lever most beginners skip.
 
 We reuse the TfidfIndex from 02_tfidf_search.py, fetch a wider candidate
 set, and ask the model to score each candidate's *relevance* to the query.
@@ -32,7 +32,7 @@ from src._llm import chat
 
 class RerankScore(BaseModel):
     """One scored candidate."""
-    chunk_index: int = Field(description="The 0-based index of the chunk in the candidate list.")
+    chunk_index: int = Field(description="The zero based index of the chunk in the candidate list.")
     relevance: Literal[0, 1, 2, 3, 4, 5] = Field(
         description="0 = irrelevant, 5 = directly answers the question."
     )
@@ -43,15 +43,8 @@ class RerankResult(BaseModel):
     scores: list[RerankScore]
 
 
-SUBMIT = {
-    "name": "submit_ranking",
-    "description": "Submit relevance scores for every candidate chunk.",
-    "input_schema": RerankResult.model_json_schema(),
-}
-
-
 def rerank(query: str, candidates: list, k: int = 3) -> list:
-    """Re-order candidates by LLM-judged relevance; return the top k."""
+    """Reorder candidates by LLM judged relevance; return the top k."""
     listing = "\n\n".join(
         f"[{i}] (doc={c.doc}#{c.idx})\n{c.text}"
         for i, (c, _score) in enumerate(candidates)
@@ -59,17 +52,19 @@ def rerank(query: str, candidates: list, k: int = 3) -> list:
     prompt = (
         f"Question: {query}\n\n"
         f"Candidate chunks:\n{listing}\n\n"
-        "Score each chunk 0-5 for how directly it answers the question. "
+        "Score each chunk 0 to 5 for how directly it answers the question. "
         "Be strict: 5 only if the chunk literally contains the answer."
     )
     response = chat(
         messages=[{"role": "user", "content": prompt}],
-        tools=[SUBMIT],
-        tool_choice={"type": "tool", "name": "submit_ranking"},
+        output_schema=RerankResult,  # structured output (Lesson 02): no tool needed
+        effort="low",
     )
-    parsed = RerankResult.model_validate(response.tool_uses[0]["input"])
+    parsed: RerankResult | None = response.parsed
+    if parsed is None:
+        return [(c, 0, "rerank failed") for c, _score in candidates[:k]]
 
-    # Sort by relevance desc; keep original order as the tie-breaker.
+    # Sort by relevance desc; keep original order as the tiebreaker.
     ranked = sorted(
         parsed.scores,
         key=lambda s: (-s.relevance, s.chunk_index),

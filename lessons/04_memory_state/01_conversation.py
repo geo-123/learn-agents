@@ -1,4 +1,4 @@
-"""Lesson 04 — naive append-everything conversation memory.
+"""Lesson 04: naive append everything conversation memory.
 
 A REPL where every turn appends to the history list. Watch the input
 token count grow turn over turn. This is the baseline we're going to

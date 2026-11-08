@@ -1,4 +1,4 @@
-"""Lesson 04 — summarization-based memory.
+"""Lesson 04: summarization based memory.
 
 When the conversation exceeds a token threshold, fire ONE extra LLM call
 to summarize the older half. The summary replaces the older messages and
@@ -15,14 +15,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from src._llm import chat
+from src._llm import chat, strip_thinking
 
 
 BASE_SYSTEM = "You are a helpful, concise assistant."
 
 # Compact when the most recent turn used more than this many input tokens.
 # In production you'd track cumulative tokens or character counts; this
-# threshold-on-last-turn approximation is enough for the lesson.
+# threshold on last turn approximation is enough for the lesson.
 SUMMARIZE_TRIGGER_TOKENS = 1500
 
 
@@ -91,7 +91,10 @@ def repl() -> None:
             new_summary_pieces = [summary] if summary else []
             new_summary_pieces.append(summarize(to_compact))
             summary = "\n\n".join(new_summary_pieces)
-            messages = keep
+            # The system prompt changes and the older turns go, so the thinking
+            # blocks of the kept turns no longer match what came before them.
+            # Current models reject such blocks: strip them from the kept turns.
+            messages = strip_thinking(keep)
             print(f"[summary now: {summary!r}]")
 
 

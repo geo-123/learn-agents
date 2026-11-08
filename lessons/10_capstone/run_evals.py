@@ -1,11 +1,14 @@
-"""Lesson 10 — capstone eval runner.
+"""Lesson 10: capstone eval runner.
 
 Runs the capstone agent against fixtures.jsonl. Each fixture asserts:
   - The answer contains required substrings (or any of them, if match_any).
   - Citations include at least one expected doc.
   - Confidence is within an expected band.
+  - Or, with expect_refused, that the input guard refused the question
+    (no model call is made for those).
+A partial report (budget exhausted) is checked like any other and flagged.
 
-Prints per-fixture pass/fail, then a summary. Traces land in traces/.
+Prints per fixture pass/fail, then a summary. Traces land in traces/.
 
 Run:
     uv run python lessons/10_capstone/run_evals.py
@@ -27,10 +30,14 @@ sys.modules["_cap"] = _cap  # Python 3.13: @dataclass needs the module registere
 spec.loader.exec_module(_cap)
 
 
-def check(report, fx: dict) -> tuple[bool, list[str]]:
+def check(report, outcome: str, fx: dict) -> tuple[bool, list[str]]:
     failures: list[str] = []
+    if fx.get("expect_refused"):
+        if outcome.startswith("refused"):
+            return True, []
+        return False, [f"expected a refusal, got {outcome!r}"]
     if report is None:
-        return False, ["agent returned no report"]
+        return False, [f"agent returned no report ({outcome})"]
 
     text = report.answer.lower()
     must = [s.lower() for s in fx.get("must_contain", [])]
@@ -67,9 +74,10 @@ def main() -> None:
     for fx in fixtures:
         print(f"--- {fx['id']} ---")
         print(f"Q: {fx['input']}")
-        report, trace = _cap.run_agent(fx["input"])
-        ok, reasons = check(report, fx)
-        print(f"{'PASS' if ok else 'FAIL'}  " + ("; ".join(reasons) if reasons else ""))
+        report, trace, outcome = _cap.run_agent(fx["input"])
+        ok, reasons = check(report, outcome, fx)
+        flag = f"  [{outcome}]" if outcome.startswith("partial") else ""
+        print(f"{'PASS' if ok else 'FAIL'}{flag}  " + ("; ".join(reasons) if reasons else ""))
         print(f"(trace: {trace.name})\n")
         rows.append((fx["id"], ok, reasons))
 

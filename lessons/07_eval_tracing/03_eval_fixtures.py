@@ -1,4 +1,4 @@
-"""Lesson 07 — deterministic eval harness over fixtures.
+"""Lesson 07: deterministic eval harness over fixtures.
 
 Loads fixtures.jsonl, runs the RAG agent from Lesson 03b on each input,
 checks the answer with must_contain / must_not_contain assertions, and

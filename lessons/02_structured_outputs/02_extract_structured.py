@@ -1,12 +1,19 @@
-"""Lesson 02 — structured extraction via forced tool call.
+"""Lesson 02: structured extraction with native structured outputs.
 
-Same task as 01_extract_prompt.py, but using a forced tool call. Compare:
-  - schema is enforced by the protocol, not by hope
-  - typed object out, ready to use
-  - the failure mode is now ValidationError (loud) not silent wrong-shape
+Same task as 01_extract_prompt.py, but the API constrains the answer to our
+schema. Compare:
+  - the schema is enforced by the API (constrained decoding), not by hope
+  - typed object out, ready to use (`response.parsed`)
+  - no tool, no forced tool choice, no hoping the text parses
+
+Under the hood `chat(..., output_schema=Contact)` (see src/_llm.py) does four
+visible steps: Contact.model_json_schema(), trim it to the enforceable subset,
+send it as `output_config={"format": {"type": "json_schema", "schema": ...}}`,
+then json.loads and Contact.model_validate on the answer. The README explains
+how the API makes the answer match the schema: constrained decoding.
 
 Run:
-    uv run python lessons/02_structured_outputs/02_extract_tool.py
+    uv run python lessons/02_structured_outputs/02_extract_structured.py
 """
 from __future__ import annotations
 
@@ -14,7 +21,7 @@ import sys
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -22,7 +29,7 @@ from src._llm import chat
 
 
 class Contact(BaseModel):
-    """What we want to extract — same shape as the prompt-based version,
+    """What we want to extract: same shape as the prompt based version,
     but now with real constraints. The model reads this schema as a prompt."""
     name: str = Field(description="Full name. Use the most recent name mentioned.")
     company: str | None = Field(
@@ -35,27 +42,23 @@ class Contact(BaseModel):
     )
     seniority: Literal["junior", "mid", "senior", "exec", "unknown"] = Field(
         description=(
-            "Inferred seniority. 'exec' for C-level/VP. 'unknown' if the text "
-            "gives no signal at all — do NOT guess."
+            "Inferred seniority. 'exec' for C level/VP. 'unknown' if the text "
+            "gives no signal at all: do NOT guess."
         ),
     )
-
-
-SUBMIT_TOOL = {
-    "name": "submit_contact",
-    "description": "Submit the extracted contact information.",
-    "input_schema": Contact.model_json_schema(),
-}
 
 
 def extract(text: str) -> Contact:
     response = chat(
         messages=[{"role": "user", "content": f"Extract a contact from:\n\n{text}"}],
-        tools=[SUBMIT_TOOL],
-        tool_choice={"type": "tool", "name": "submit_contact"},
+        output_schema=Contact,
+        effort="low",  # extraction is easy; low effort is faster and cheaper
     )
-    assert response.tool_uses, "Forced tool call should always produce a tool_use"
-    return Contact.model_validate(response.tool_uses[0]["input"])
+    if response.refused or response.parsed is None:
+        # The schema guarantee holds for a finished answer. A refusal, or an
+        # answer cut off at max_tokens, has nothing to parse: check stop_reason.
+        raise RuntimeError(f"no structured answer (stop_reason={response.stop_reason})")
+    return response.parsed
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""Lesson 00 — the bare agent loop.
+"""Lesson 00: the bare agent loop.
 
 Stop condition: the assistant's text ends with the word "DONE".
 No tools, no retries, no memory beyond the messages list.
@@ -19,7 +19,7 @@ from src._llm import chat
 
 SYSTEM = (
     "You are a brainstorming agent. RULES: on each turn, propose exactly ONE "
-    "item with a one-sentence rationale, then stop and wait for the user to "
+    "item with a one sentence rationale, then stop and wait for the user to "
     "say 'Continue.' Do not list multiple items in a single turn. "
     "When and only when you have produced the number requested, end your "
     "final message with the word DONE on its own line."
@@ -43,7 +43,7 @@ def run_agent(task: str, *, max_steps: int = 5) -> list[dict]:
             return messages
 
         # Prompt the model to continue. Without this nudge, the model would
-        # often stop after one turn — there's no other "user" speaking.
+        # often stop after one turn: there's no other "user" speaking.
         messages.append({"role": "user", "content": "Continue."})
 
     print(f"\n[stop] hit max_steps={max_steps}")
@@ -51,8 +51,8 @@ def run_agent(task: str, *, max_steps: int = 5) -> list[dict]:
 
 
 if __name__ == "__main__":
-    # A multi-item task with a "one per turn" system rule forces the loop to
+    # A multi item task with a "one per turn" system rule forces the loop to
     # actually iterate. You should see step 1..4 with a single name each,
     # then a final turn that ends with DONE.
-    task = "Propose 4 names for a new note-taking app aimed at developers."
+    task = "Propose 4 names for a new note taking app aimed at developers."
     run_agent(task)

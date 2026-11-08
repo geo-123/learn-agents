@@ -1,19 +1,19 @@
-"""Lesson 03b (local variant) — real embeddings, no paid API.
+"""Lesson 03b (local variant): real embeddings, no paid API.
 
 Same `search(query, k) -> list[Hit]` interface as the TF-IDF version in
 03a and the OpenAI version in 02_embeddings_openai.py. Only the embedding
-*implementation* changes — the agent loop in 01_rag_tool.py would work
+*implementation* changes: the agent loop in 01_rag_tool.py would work
 unchanged against any of the three. That's the whole lesson: a retriever
 is an interface, not a vendor.
 
-This variant runs a small open-source model **locally** via
-sentence-transformers. No API key, no per-query cost, works offline. The
-one cost is a one-time model download (~80 MB) on first run, cached under
+This variant runs a small open source model **locally** via
+sentence-transformers. No API key, no per query cost, works offline. The
+one cost is a one time model download (~80 MB) on first run, cached under
 your HuggingFace cache dir thereafter.
 
 Why bother over TF-IDF? Dense embeddings capture *meaning*, so paraphrases
 like "I want to take time off" or "Can I work abroad?" match the right
-doc even when they share almost no literal words with the source text —
+doc even when they share almost no literal words with the source text: 
 the exact queries TF-IDF whiffs on in 03a.
 
 Requires:
@@ -51,7 +51,7 @@ except ImportError:
 
 
 CORPUS_DIR = HERE.parents[1] / "data" / "corpus"
-# Small, fast, 384-dim. Downloads once on first run, then loads from cache.
+# Small, fast, 384 dim. Downloads once on first run, then loads from cache.
 EMBED_MODEL = "all-MiniLM-L6-v2"
 
 
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     queries = [
         "I want to take time off",          # Paraphrase TF-IDF struggled with.
         "Where do I report a phishing email?",
-        "What's the on-call pager stipend?",
+        "What's the on call pager stipend?",
         "Can I work abroad?",                # Synonyms for "from another country".
     ]
     for q in queries:

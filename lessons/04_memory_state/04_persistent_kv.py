@@ -1,14 +1,14 @@
-"""Lesson 04 — agent-controlled persistent memory.
+"""Lesson 04: agent controlled persistent memory.
 
 The agent has three tools: remember, recall, list_memories. The store is
 a JSON file on disk. Run once and tell the agent something memorable.
 Run again and ask the agent to recall it.
 
-This is the pattern modern long-running assistants use: the model
+This is the pattern modern long running assistants use: the model
 decides what's worth remembering, not your harness.
 
 Run:
-    uv run python lessons/04_memory_state/04_persistent_kv.py "Hi, I'm Sudeep and I prefer 4-space indents."
+    uv run python lessons/04_memory_state/04_persistent_kv.py "Hi, I'm Sudeep and I prefer 4 space indents."
     uv run python lessons/04_memory_state/04_persistent_kv.py "What do you remember about me?"
 """
 from __future__ import annotations
@@ -90,8 +90,8 @@ REGISTRY: dict[str, Tool] = {t.name: t for t in [
     Tool(
         name="remember",
         description=(
-            "Save a fact to long-term memory for future conversations. "
-            "Use this for user preferences, names, important constraints — "
+            "Save a fact to long term memory for future conversations. "
+            "Use this for user preferences, names, important constraints: "
             "things you'd want to know next time. Don't use it for things "
             "only relevant to this turn."
         ),
@@ -99,12 +99,12 @@ REGISTRY: dict[str, Tool] = {t.name: t for t in [
     ),
     Tool(
         name="recall",
-        description="Retrieve a previously-remembered fact by key.",
+        description="Retrieve a previously remembered fact by key.",
         args_model=RecallArgs, fn=recall,
     ),
     Tool(
         name="list_memories",
-        description="List all keys currently in long-term memory.",
+        description="List all keys currently in long term memory.",
         args_model=ListMemoriesArgs, fn=list_memories,
     ),
 ]}
@@ -130,11 +130,11 @@ def _err(use_id: str, msg: str) -> dict:
 
 
 SYSTEM = (
-    "You are an assistant with persistent long-term memory. At the start "
+    "You are an assistant with persistent long term memory. At the start "
     "of any conversation, call list_memories to see what you already know. "
     "When the user shares a fact about themselves or their preferences, "
     "save it with remember(). Use recall() to look things up. "
-    "Be transparent — tell the user when you've saved or recalled something."
+    "Be transparent: tell the user when you've saved or recalled something."
 )
 
 

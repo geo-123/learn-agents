@@ -1,6 +1,6 @@
 # New Hire Onboarding
 
-New hires at Acme follow a **structured 30-60-90** plan owned by their
+New hires at Acme follow a **structured 30/60/90** plan owned by their
 manager. The first day focuses on equipment setup, HR forms, and the
 welcome lunch with the team.
 
@@ -10,7 +10,7 @@ By end of week 1, every new hire should have:
 - A buddy assigned from another team.
 
 By end of month 1, engineers should have shipped at least one merged PR,
-even if trivial. This is intentional — it forces the dev environment, CI,
+even if trivial. This is intentional: it forces the dev environment, CI,
 and review process to be in place early.
 
 The Acme Handbook is mandatory reading in week 1. The Eng Handbook is

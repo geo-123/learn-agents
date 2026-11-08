@@ -1,7 +1,7 @@
-"""Lesson 01 — one tool, one turn.
+"""Lesson 01: one tool, one turn.
 
-The simplest possible tool-calling demo. We define ONE tool (get_weather),
-hand it to the model, and watch the two-turn exchange:
+The simplest possible tool calling demo. We define ONE tool (get_weather),
+hand it to the model, and watch the two turn exchange:
 
     turn 1: user asks -> model emits tool_use
     turn 2: we send tool_result -> model produces text answer
@@ -21,7 +21,7 @@ from src._llm import chat
 
 
 # A "tool" on the wire is just this dict. Name, description, input schema.
-# The description is a prompt — write it like one.
+# The description is a prompt: write it like one.
 GET_WEATHER_TOOL = {
     "name": "get_weather",
     "description": (
@@ -58,7 +58,7 @@ def main() -> None:
         {"role": "user", "content": "What's the weather like in Lisbon right now?"}
     ]
 
-    # Turn 1 — model decides whether to call the tool.
+    # Turn 1: model decides whether to call the tool.
     print("--- turn 1: sending user question ---")
     r1 = chat(messages, tools=[GET_WEATHER_TOOL])
     print(f"stop_reason={r1.stop_reason}")
@@ -85,7 +85,7 @@ def main() -> None:
         }],
     })
 
-    # Turn 2 — model sees the result and produces a natural-language answer.
+    # Turn 2: model sees the result and produces a natural language answer.
     print("\n--- turn 2: sending tool result ---")
     r2 = chat(messages, tools=[GET_WEATHER_TOOL])
     print(f"stop_reason={r2.stop_reason}")

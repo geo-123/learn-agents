@@ -1,23 +1,27 @@
-"""Lesson 09 — a minimal stdio MCP server.
+"""Lesson 09: a minimal stdio MCP server (mcp 2.x).
 
 Exposes:
   - tools:     search_docs, remember, recall
   - resources: acme://handbook/<doc>       (the corpus files)
   - prompts:   meeting_summary(transcript)
 
-Run standalone (it will wait on stdin — that's the protocol):
+Run standalone (it will wait on stdin: that's the protocol):
     uv run python lessons/09_mcp/01_mcp_server.py
 
 It's meant to be spawned as a subprocess by 02_mcp_client.py.
+
+In mcp 1.x this class was called FastMCP (`mcp.server.fastmcp`). Version 2
+renamed it MCPServer; the decorators kept their arguments.
 """
 from __future__ import annotations
 
+import contextlib
 import importlib.util
 import json
 import sys
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 
 HERE = Path(__file__).resolve().parent
@@ -32,7 +36,10 @@ spec.loader.exec_module(_tfidf)
 
 CORPUS_DIR = HERE.parents[1] / "data" / "corpus"
 MEMORY_PATH = HERE / "mcp_memory.json"
-INDEX = _tfidf.build_index()
+# On stdio, stdout IS the protocol channel: any stray print corrupts it.
+# build_index() prints a status line, so send that to stderr instead.
+with contextlib.redirect_stdout(sys.stderr):
+    INDEX = _tfidf.build_index()
 
 
 def _load_mem() -> dict:
@@ -48,7 +55,7 @@ def _save_mem(d: dict) -> None:
 # --- Server setup ---------------------------------------------------------
 
 
-mcp = FastMCP("acme-handbook")
+mcp = MCPServer("acme-handbook", version="1.0.0")
 
 
 @mcp.tool()
@@ -62,7 +69,7 @@ def search_docs(query: str, k: int = 3) -> list[dict]:
 
 @mcp.tool()
 def remember(key: str, value: str) -> dict:
-    """Persist a fact to long-term memory. Returns the stored pair."""
+    """Persist a fact to long term memory. Returns the stored pair."""
     store = _load_mem()
     store[key] = value
     _save_mem(store)
@@ -82,8 +89,10 @@ def recall(key: str) -> dict:
 @mcp.resource("acme://handbook/{name}")
 def handbook_doc(name: str) -> str:
     """Read a specific handbook doc by filename, e.g. 'vacation_policy.md'."""
-    target = CORPUS_DIR / name
-    if not target.exists() or not target.is_relative_to(CORPUS_DIR):
+    # The SDK already rejects path traversal values such as "../x" in
+    # template variables; we still check, since the server owns its files.
+    target = (CORPUS_DIR / name).resolve()
+    if not target.is_relative_to(CORPUS_DIR.resolve()) or not target.is_file():
         return f"(no such doc: {name})"
     return target.read_text(encoding="utf-8")
 

@@ -1,7 +1,7 @@
-"""Lesson 03a — TF-IDF retrieval, built from scratch.
+"""Lesson 03a: TF-IDF retrieval, built from scratch.
 
-A working bag-of-words + TF-IDF + cosine search engine in ~50 lines.
-Same pipeline shape (chunk -> embed -> index -> query -> top-k) you'll
+A working bag of words + TF-IDF + cosine search engine in ~50 lines.
+Same pipeline shape (chunk -> embed -> index -> query -> top k) you'll
 use later with real embeddings. The point: a "vector DB" is a matrix.
 
 Run:
@@ -29,7 +29,7 @@ class Chunk:
 
 
 def chunk_markdown(doc: str, text: str) -> list[Chunk]:
-    """Reused from 01_chunking.py — header-aware splitting."""
+    """Reused from 01_chunking.py: header aware splitting."""
     chunks, header, lines, idx = [], "", [], 0
     def flush() -> None:
         nonlocal idx
@@ -57,7 +57,7 @@ class TfidfIndex:
     """A minimal TF-IDF + cosine retriever.
 
     Build once over a list of chunks; query as many times as you want.
-    Vocabulary is fixed at build time — out-of-vocab query terms are dropped.
+    Vocabulary is fixed at build time: out of vocab query terms are dropped.
     """
     def __init__(self, chunks: list[Chunk]):
         self.chunks = chunks
@@ -124,8 +124,8 @@ if __name__ == "__main__":
     queries = [
         "How many vacation days do I get?",            # Direct lexical match.
         "Can I work from another country?",            # Remote_work doc.
-        "What's the on-call pager stipend?",           # Incident_response doc.
-        "I want to take time off",                     # Paraphrase — watch this miss.
+        "What's the on call pager stipend?",           # Incident_response doc.
+        "I want to take time off",                     # Paraphrase: watch this miss.
         "Where do I report a phishing email?",         # Security doc.
         "Do reimbursements need receipts?",            # Expense doc.
     ]
@@ -134,7 +134,7 @@ if __name__ == "__main__":
         print(f"\nQ: {q}")
         results = idx.search(q, k=3)
         if not results:
-            print("  (no results — all query tokens were out-of-vocabulary)")
+            print("  (no results: all query tokens were out of vocabulary)")
             continue
         for chunk, score in results:
             preview = chunk.text.split("\n", 1)[0][:80]

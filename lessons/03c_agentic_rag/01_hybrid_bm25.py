@@ -1,8 +1,8 @@
-"""Lesson 03c — BM25 + Reciprocal Rank Fusion.
+"""Lesson 03c: BM25 + Reciprocal Rank Fusion.
 
 Two lexical rankers (BM25 here, TF-IDF from 03a) and the RRF formula
 that fuses them. The pedagogical point is the fusion pattern: it works
-identically when one channel is a dense embedding retriever — the code
+identically when one channel is a dense embedding retriever: the code
 below would not change.
 
 Run:
@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 
 # Reuse the tokenizer + TfidfIndex from 03a. The numeric prefix on the
-# file name blocks ordinary `import` — load by path. The module must be
+# file name blocks ordinary `import`: load by path. The module must be
 # inserted into sys.modules *before* exec so that @dataclass can resolve
 # its own module on Python 3.13+.
 HERE = Path(__file__).resolve().parent
@@ -41,9 +41,9 @@ CORPUS_DIR = Path(__file__).resolve().parents[2] / "data" / "corpus"
 def chunk_paragraphs(doc: str, text: str) -> list[Chunk]:
     """Split a doc into paragraphs on blank lines.
 
-    We don't reuse 03a's markdown-header chunker here because every doc
-    in the demo corpus only has one top-level header, so it would yield
-    one chunk per doc — leaving the two rankers nothing to disagree on.
+    We don't reuse 03a's markdown header chunker here because every doc
+    in the demo corpus only has one top level header, so it would yield
+    one chunk per doc: leaving the two rankers nothing to disagree on.
     """
     chunks: list[Chunk] = []
     for idx, para in enumerate(re.split(r"\n\s*\n", text)):
@@ -64,8 +64,8 @@ class BM25Index:
     """Okapi BM25, built from scratch.
 
     Two knobs that distinguish BM25 from plain TF-IDF:
-      k1  — term-frequency saturation. Higher = each extra mention counts more.
-      b   — length normalization. 0 = ignore doc length; 1 = full normalization.
+      k1: term frequency saturation. Higher = each extra mention counts more.
+      b: length normalization. 0 = ignore doc length; 1 = full normalization.
     Standard defaults (k1=1.5, b=0.75) work well on most corpora.
     """
 
@@ -91,7 +91,7 @@ class BM25Index:
         for t, j in self.vocab.items():
             self.idf[j] = math.log((n - df[t] + 0.5) / (df[t] + 0.5) + 1.0)
 
-        # Raw term-frequency matrix (no IDF baked in — applied at query time).
+        # Raw term frequency matrix (no IDF baked in: applied at query time).
         self.tf = np.zeros((n, len(vocab)))
         for i, ts in enumerate(tokens):
             for t, count in Counter(ts).items():
@@ -119,7 +119,7 @@ class BM25Index:
 #
 # Given multiple ranked lists of the same items, RRF assigns each item a
 # score of 1/(c + rank) per list and sums. Items that rank consistently
-# high across rankers float to the top — without needing to normalize
+# high across rankers float to the top: without needing to normalize
 # scores that live on totally different scales.
 
 
@@ -132,7 +132,7 @@ def rrf_fuse(
     """Fuse N ranked chunk lists into a single ranked list of length k.
 
     c = 60 is the value from the original RRF paper. It dampens the
-    contribution of low-ranked items; smaller c gives top ranks more
+    contribution of low ranked items; smaller c gives top ranks more
     weight, larger c flattens the curve.
     """
     scores: dict[tuple[str, int], float] = {}
@@ -169,25 +169,25 @@ if __name__ == "__main__":
     tfidf = _tfidf.TfidfIndex(chunks)
     bm25 = BM25Index(chunks)
 
-    # The first three queries land cleanly — both rankers agree on the
+    # The first three queries land cleanly: both rankers agree on the
     # right chunk, and the score *scales* differ wildly (TF-IDF ~0.3,
     # BM25 ~8). That's the whole point of RRF: it averages ranks, not
     # scores, so incomparable scales don't matter.
     #
     # The last query is a paraphrase: the corpus says "vacation does not
     # roll over" but the question uses "PTO carryover". Both lexical
-    # rankers miss — fusion can't rescue them. This is the moment to
+    # rankers miss: fusion can't rescue them. This is the moment to
     # add a dense embedding channel as a third ranker (Lesson 03b shows
     # the embedding swap; the RRF code below would not change).
     queries = [
         "company holidays and how many days off",
         "what do I do if I clicked a phishing link",
-        "stipend for after-hours pages",
+        "stipend for after hours pages",
         "PTO carryover policy",
     ]
 
     K_RETRIEVE = 5  # depth from each ranker before fusion
-    K_FINAL = 3     # top-k after fusion
+    K_FINAL = 3     # top k after fusion
 
     for q in queries:
         print(f"\n{'='*72}\nQ: {q}")

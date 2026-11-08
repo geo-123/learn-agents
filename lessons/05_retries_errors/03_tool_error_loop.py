@@ -1,8 +1,8 @@
-"""Lesson 05 — let the model handle tool errors.
+"""Lesson 05: let the model handle tool errors.
 
-flaky_search() fails 50% of the time. We DON'T auto-retry inside the
+flaky_search() fails 50% of the time. We DON'T auto retry inside the
 dispatcher. We return the error to the model and let it decide whether
-to retry, reformulate, or fall back. Watch the trace — the model often
+to retry, reformulate, or fall back. Watch the trace: the model often
 reasons its way out.
 
 Run:
@@ -32,7 +32,7 @@ class SearchArgs(BaseModel):
 
 
 def flaky_search(args: SearchArgs) -> dict:
-    """Pretends to search but fails 50% of the time. Don't retry inside —
+    """Pretends to search but fails 50% of the time. Don't retry inside: 
     we want the *model* to see the error and react."""
     if random.random() < 0.5:
         raise RuntimeError("upstream search service returned 503")
@@ -75,7 +75,7 @@ class Tool:
 
 REGISTRY: dict[str, Tool] = {t.name: t for t in [
     Tool("flaky_search",
-         "Search the web. May intermittently fail with an upstream error — "
+         "Search the web. May intermittently fail with an upstream error: "
          "if it fails, you can retry once or fall back to cached_fact.",
          SearchArgs, flaky_search),
     Tool("cached_fact",
@@ -109,7 +109,7 @@ def _err(use_id: str, msg: str) -> dict:
 SYSTEM = (
     "You are a research assistant. Prefer flaky_search for general queries. "
     "If it fails repeatedly, fall back to cached_fact. Always end with a "
-    "one-paragraph answer. Be transparent about which tools succeeded."
+    "one paragraph answer. Be transparent about which tools succeeded."
 )
 
 

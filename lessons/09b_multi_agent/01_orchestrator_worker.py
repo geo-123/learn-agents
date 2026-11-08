@@ -1,10 +1,10 @@
-"""Lesson 09b — orchestrator + parallel workers.
+"""Lesson 09b: orchestrator + parallel workers.
 
 An orchestrator LLM call decomposes a research question into sub-
 questions; each is dispatched to a worker (a scoped LLM call) running
 in parallel; the orchestrator synthesizes the worker outputs into one
 answer. Each worker has its own focused system prompt and never sees
-the others' work — context isolation is the whole point.
+the others' work: context isolation is the whole point.
 
 Run:
     uv run python lessons/09b_multi_agent/01_orchestrator_worker.py
@@ -41,22 +41,16 @@ HANDBOOK = load_handbook()
 class SubQuestions(BaseModel):
     """Schema the orchestrator must fill on the decomposition turn."""
     sub_questions: list[str] = Field(
-        description="2-5 focused sub-questions whose answers together cover the user's question.",
+        description="2 to 5 focused subquestions whose answers together cover the user's question.",
         min_length=2,
         max_length=5,
     )
 
 
-DECOMPOSE_TOOL = {
-    "name": "submit_decomposition",
-    "description": "Submit the list of sub-questions for parallel research.",
-    "input_schema": SubQuestions.model_json_schema(),
-}
-
 ORCHESTRATOR_SYSTEM = (
     "You are a research orchestrator. The user asks one composite question. "
-    "Split it into 2-5 focused sub-questions a worker can answer independently "
-    "in parallel. Each sub-question should be self-contained — workers don't "
+    "Split it into 2 to 5 focused subquestions a worker can answer independently "
+    "in parallel. Each subquestion should be self contained: workers don't "
     "see each other's output."
 )
 
@@ -65,19 +59,19 @@ def decompose(question: str) -> list[str]:
     response = chat(
         system=ORCHESTRATOR_SYSTEM,
         messages=[{"role": "user", "content": question}],
-        tools=[DECOMPOSE_TOOL],
-        tool_choice={"type": "tool", "name": "submit_decomposition"},
+        output_schema=SubQuestions,  # structured output (Lesson 02)
     )
-    raw = response.tool_uses[0]["input"]
-    return SubQuestions.model_validate(raw).sub_questions
+    if response.parsed is None:
+        raise RuntimeError(f"orchestrator gave no plan (stop_reason={response.stop_reason})")
+    return response.parsed.sub_questions
 
 
 # --- Step 2: workers run in parallel --------------------------------------
 
 
 WORKER_SYSTEM = (
-    "You are a focused research worker. Answer the user's sub-question using "
-    "ONLY the Acme handbook below. Be concise (1-3 sentences) and cite the "
+    "You are a focused research worker. Answer the user's subquestion using "
+    "ONLY the Acme handbook below. Be concise (1 to 3 sentences) and cite the "
     "doc name when you can. If the handbook doesn't cover it, say so.\n\n"
     f"=== HANDBOOK ===\n\n{HANDBOOK}\n\n=== END HANDBOOK ==="
 )
@@ -103,7 +97,7 @@ SYNTHESIZER_SYSTEM = (
 
 def synthesize(original_question: str, sub_q_and_a: list[tuple[str, str]]) -> str:
     findings = "\n\n".join(
-        f"Sub-question: {q}\nFinding: {a}" for q, a in sub_q_and_a
+        f"Subquestion: {q}\nFinding: {a}" for q, a in sub_q_and_a
     )
     response = chat(
         system=SYNTHESIZER_SYSTEM,
@@ -115,7 +109,7 @@ def synthesize(original_question: str, sub_q_and_a: list[tuple[str, str]]) -> st
     return response.text.strip()
 
 
-# --- Glue: the full orchestrator-worker flow ------------------------------
+# --- Glue: the full orchestrator worker flow ------------------------------
 
 
 def run(question: str) -> str:
@@ -128,7 +122,7 @@ def run(question: str) -> str:
 
     print(f"\n[2] dispatch {len(sub_qs)} workers in parallel")
     with ThreadPoolExecutor(max_workers=len(sub_qs)) as pool:
-        # zip preserves the sub-question / answer pairing across the parallel calls.
+        # zip preserves the subquestion / answer pairing across the parallel calls.
         answers = list(pool.map(worker, sub_qs))
     for i, (sq, ans) in enumerate(zip(sub_qs, answers), start=1):
         print(f"    [worker {i}] {sq}")
@@ -143,7 +137,7 @@ if __name__ == "__main__":
     questions = [
         # Naturally decomposes into vacation + parental leave + sick leave.
         "Compare Acme's vacation policy, parental leave, and sick leave.",
-        # Naturally decomposes into incident SEV tiers + on-call stipend + postmortem.
+        # Naturally decomposes into incident SEV tiers + on call stipend + postmortem.
         "Walk me through how Acme handles a production incident, from page to postmortem.",
     ]
     for q in questions:

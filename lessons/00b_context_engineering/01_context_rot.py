@@ -1,17 +1,17 @@
-"""Lesson 00b — Context rot, hands-on.
+"""Lesson 00b: Context rot, hands on.
 
-A small needle-in-a-haystack demo. We insert one fact ("PURPLE-WHALE-42")
+A small needle in a haystack demo. We insert one fact ("PURPLE-WHALE-42")
 into a body of filler text and ask the model to retrieve it. Two
 variations:
 
-  1. Position — needle at the start vs. middle vs. end of the haystack.
-  2. Distractor — adding a plausible-looking but wrong "secret code"
+  1. Position: needle at the start vs. middle vs. end of the haystack.
+  2. Distractor: adding a plausible looking but wrong "secret code"
      elsewhere in the haystack.
 
 On the small corpus shipped here (~3K tokens), modern frontier models
 usually pass all variants. The point is to see the *pattern* and the
 plumbing, then crank up the haystack size (or switch to a less capable
-model) to reproduce Chroma's published context-rot findings yourself.
+model) to reproduce Chroma's published context rot findings yourself.
 
 Run:
     uv run python lessons/00b_context_engineering/01_context_rot.py
@@ -38,7 +38,7 @@ QUESTION = (
 
 def build_haystack(position: str, *, with_distractor: bool = False) -> str:
     """Concatenate the demo corpus, then splice the needle at the requested
-    position. Optionally insert a similarly-shaped distractor on the
+    position. Optionally insert a similarly shaped distractor on the
     opposite side of the document.
     """
     docs: list[str] = []
@@ -58,7 +58,7 @@ def build_haystack(position: str, *, with_distractor: bool = False) -> str:
 
     if with_distractor:
         # Drop the distractor in the *opposite* region from the needle so
-        # they compete for attention rather than sit side-by-side.
+        # they compete for attention rather than sit side by side.
         if position == "start":
             body = body + "\n\n---\n\n" + DISTRACTOR
         elif position == "end":
@@ -112,8 +112,8 @@ if __name__ == "__main__":
     run_trial("middle, with distractor", "middle", with_distractor=True)
 
     print(
-        "\nNote: on this ~3K-token haystack modern models usually pass all "
-        "variants. To reproduce the published context-rot findings, pad the "
+        "\nNote: on this ~3K token haystack modern models usually pass all "
+        "variants. To reproduce the published context rot findings, pad the "
         "haystack to 50K+ tokens (e.g., concatenate the corpus 20x) or "
         "switch to a less capable model in src/_llm.py."
     )

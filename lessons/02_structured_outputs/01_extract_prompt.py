@@ -1,4 +1,4 @@
-"""Lesson 02 — naive prompt-and-parse extraction.
+"""Lesson 02: naive prompt and parse extraction.
 
 Ask the model to return JSON in its text. Parse with json.loads. Watch
 some inputs work, some fail. The failure modes are the lesson.

@@ -1,4 +1,4 @@
-"""Lesson 07 — JSONL tracer with nested spans.
+"""Lesson 07: JSONL tracer with nested spans.
 
 A `Tracer` writes one span per line. `with tracer.span(kind, ...):` opens
 a span; nested `with` blocks become children via a contextvar. The result

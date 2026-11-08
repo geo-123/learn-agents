@@ -1,8 +1,8 @@
-"""Lesson 03b — RAG as a tool the agent calls.
+"""Lesson 03b: RAG as a tool the agent calls.
 
 The TfidfIndex from 03a is exposed as `search_docs`. The agent decides
 when to search, what to search for, and how to weave the result into an
-answer. No preprocessing magic — just a tool.
+answer. No preprocessing magic: just a tool.
 
 Run:
     uv run python lessons/03b_rag_in_loop/01_rag_tool.py
@@ -59,7 +59,7 @@ def search(query: str, k: int = 3) -> list[Hit]:
 
 
 class SearchArgs(BaseModel):
-    query: str = Field(description="A natural-language query.")
+    query: str = Field(description="A natural language query.")
     k: int = Field(default=3, ge=1, le=8, description="How many chunks to return.")
 
 

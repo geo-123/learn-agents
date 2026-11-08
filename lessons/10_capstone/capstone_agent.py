@@ -1,4 +1,4 @@
-"""Lesson 10 — capstone research agent.
+"""Lesson 10: capstone research agent.
 
 Synthesizes every prior topic into one runnable program. Reads like a
 synthesis of every file before it; intentionally denser than any one
@@ -91,17 +91,62 @@ class Tracer:
 
 
 # -------------------------------------------------------------------------
-# Input guard (Lesson 08). Refuses off-topic / PII.
+# Input guard (Lesson 08). Refuses PII and off topic questions.
 # -------------------------------------------------------------------------
-INJECTION = re.compile(r"ignore (the )?(previous|prior|above)", re.I)
-SSN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
+# Same patterns as Lesson 08, 01_input_guard.py.
+INJECTION_PATTERNS = [
+    re.compile(r"ignore (the )?(previous|prior|above)( instructions)?", re.I),
+    re.compile(r"you are now (?:a |an )?", re.I),
+    re.compile(r"(disregard|forget) (your|the) (system|prior|previous)", re.I),
+    re.compile(r"<<\s*system\s*>>", re.I),
+]
+PII_PATTERNS = {
+    "us_ssn": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
+    "credit_card": re.compile(r"\b(?:\d[ -]*?){13,16}\b"),
+    "email": re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),
+}
+# The input guard blocks the high risk classes; an email address in a
+# question is fine ("where do I forward phishing?" may name one).
+INPUT_BLOCKED_PII = ("us_ssn", "credit_card")
+
+# Off topic check, rule based (Lesson 08: no LLM as guard where a cheap rule
+# does). A question is on topic when it shares at least one content word with
+# the handbook, so the vocabulary comes from the corpus itself, not from a
+# hand written topic list. Function words and generic request words do not
+# count: every question has them. The rule is deliberately loose: "pets in
+# the office" passes (the agent then reports that the handbook does not cover
+# it), "the capital of Portugal" does not. It is a quality guard, so a miss
+# only costs one wasted run.
+HANDBOOK_VOCAB = set(INDEX.vocab_index)
+STOPWORDS = {
+    "a", "an", "the", "and", "or", "but", "if", "of", "to", "in", "on", "at",
+    "for", "with", "from", "by", "as", "about", "into", "is", "are", "was",
+    "were", "be", "been", "do", "does", "did", "can", "could", "should",
+    "would", "will", "may", "might", "must", "i", "me", "my", "we", "our",
+    "you", "your", "it", "its", "this", "that", "these", "those", "there",
+    "what", "who", "whom", "where", "when", "why", "how", "which", "s", "t",
+    "please", "help", "tell", "know", "get", "give", "want", "need", "any",
+    "some", "all", "no", "not", "so", "than", "then", "very", "just",
+}
+
+
+def content_words(text: str) -> set[str]:
+    return {t for t in _tfidf.tokenize(text) if t not in STOPWORDS}
 
 
 def input_guard(text: str) -> tuple[bool, str, str]:
     """Returns (allowed, cleaned, reason)."""
-    if SSN.search(text):
-        return False, "", "refused: input contains an SSN"
-    cleaned = INJECTION.sub("[removed]", text)
+    for name in INPUT_BLOCKED_PII:
+        if PII_PATTERNS[name].search(text):
+            return False, "", f"refused: input contains {name}"
+    cleaned, bare = text, text
+    for pat in INJECTION_PATTERNS:
+        cleaned = pat.sub("[removed]", cleaned)
+        bare = pat.sub(" ", bare)
+    # Checked without the stripped phrases, so the words of an injection
+    # cannot make a question look on topic.
+    if not content_words(bare) & HANDBOOK_VOCAB:
+        return False, "", "refused: off topic (no word in common with the handbook)"
     return True, cleaned, "ok"
 
 
@@ -133,9 +178,45 @@ def search_docs(args: SearchArgs) -> dict:
     }
 
 
+MAX_QUERY_CHARS = 300
+
+
+def guard_search_docs(args: SearchArgs) -> tuple[bool, str]:
+    """k is bounded by the schema (1 to 6); the guard bounds the query."""
+    if not args.query.strip():
+        return False, "empty query"
+    if len(args.query) > MAX_QUERY_CHARS:
+        return False, f"query too long (>{MAX_QUERY_CHARS} chars)"
+    return True, ""
+
+
 class RememberArgs(BaseModel):
     key: str
     value: str
+
+
+MEMORY_KEY = re.compile(r"[a-z][a-z0-9_]{0,39}")
+MAX_MEMORY_VALUE_CHARS = 200
+
+
+def guard_memory_key(key: str) -> tuple[bool, str]:
+    if not MEMORY_KEY.fullmatch(key):
+        return False, f"key {key!r} must be snake_case, at most 40 chars"
+    return True, ""
+
+
+def guard_remember(args: RememberArgs) -> tuple[bool, str]:
+    """Long term memory outlives the run, so it is stricter than the input
+    guard: no PII of any class (emails included) and no large blobs."""
+    ok, why = guard_memory_key(args.key)
+    if not ok:
+        return ok, why
+    if len(args.value) > MAX_MEMORY_VALUE_CHARS:
+        return False, f"value too long (>{MAX_MEMORY_VALUE_CHARS} chars)"
+    for name, pat in PII_PATTERNS.items():
+        if pat.search(args.value) or pat.search(args.key):
+            return False, f"refusing to store {name} in long term memory"
+    return True, ""
 
 
 def remember(args: RememberArgs) -> dict:
@@ -154,6 +235,10 @@ def recall(args: RecallArgs) -> dict:
     return {"key": args.key, "value": store.get(args.key)}
 
 
+def guard_recall(args: RecallArgs) -> tuple[bool, str]:
+    return guard_memory_key(args.key)
+
+
 class AskUserArgs(BaseModel):
     question: str
 
@@ -168,7 +253,7 @@ class ResearchReport(BaseModel):
     answer: str = Field(description="The answer in plain prose.")
     citations: list[str] = Field(description="Chunk ids you used.")
     confidence: float = Field(ge=0.0, le=1.0)
-    used_memory: bool = Field(description="True if you read from long-term memory.")
+    used_memory: bool = Field(description="True if you read from long term memory.")
 
 
 def submit_report(args: ResearchReport) -> dict:
@@ -181,7 +266,8 @@ class Tool:
     description: str
     args_model: type[BaseModel]
     fn: Callable[[BaseModel], Any]
-    guard: Callable[[BaseModel], tuple[bool, str]] | None = None
+    # Runs after pydantic validation, before fn (Lesson 08, 03_tool_arg_guard.py).
+    guard: Callable[[Any], tuple[bool, str]] | None = None
 
     def schema(self) -> dict:
         return {
@@ -195,13 +281,14 @@ REGISTRY: dict[str, Tool] = {t.name: t for t in [
     Tool("search_docs",
          "Search the Acme handbook. Returns hits with id, text, score. "
          "Cite ids you actually used.",
-         SearchArgs, search_docs),
+         SearchArgs, search_docs, guard_search_docs),
     Tool("remember",
-         "Save a fact about the user for future sessions. Use sparingly.",
-         RememberArgs, remember),
+         "Save a fact about the user for future sessions. Use sparingly. "
+         "Keys are snake_case; never store contact details or ids.",
+         RememberArgs, remember, guard_remember),
     Tool("recall",
-         "Look up a previously-saved fact about the user.",
-         RecallArgs, recall),
+         "Look up a previously saved fact about the user.",
+         RecallArgs, recall, guard_recall),
     Tool("ask_user",
          "Ask the user ONE clarifying question when their request is ambiguous. "
          "Use this at most once.",
@@ -318,7 +405,63 @@ SYSTEM = (
 )
 
 
-def run_agent(question: str) -> tuple[ResearchReport | None, Path]:
+MAX_SCHEMA_REPAIRS = 2  # invalid submit_report calls fed back before giving up
+
+PARTIAL_PROMPT = (
+    "The run is out of budget, so no more tools. Give your best answer from "
+    "what you found so far. Cite only ids you saw in search results, and set "
+    "the confidence to match what is still missing."
+)
+
+
+def _add_user_text(messages: list[dict], text: str) -> None:
+    """Add a text block to the next user message.
+
+    If the history already ends with a user message that is not sent yet (the
+    tool results of the last turn), the text joins it after the tool_result
+    blocks: two user messages in a row would be merged anyway, and tool
+    results must come first in their message.
+    """
+    last = messages[-1]
+    if last["role"] != "user":
+        messages.append({"role": "user", "content": text})
+        return
+    content = last["content"]
+    blocks = [{"type": "text", "text": content}] if isinstance(content, str) else list(content)
+    last["content"] = blocks + [{"type": "text", "text": text}]
+
+
+def partial_report(tracer: Tracer, messages: list[dict], tools: list[dict]) -> ResearchReport | None:
+    """Graceful stop: one last call with tools switched off.
+
+    tool_choice none keeps the tool definitions (the history holds tool_use
+    blocks) but lets the model only write text, and output_schema makes that
+    text a ResearchReport (Lesson 02). None if even this call yields nothing.
+    """
+    _add_user_text(messages, PARTIAL_PROMPT)
+    with tracer.span("llm_call", step="partial") as out:
+        try:
+            response = chat_with_retry(
+                messages, system=SYSTEM, tools=tools,
+                tool_choice={"type": "none"}, output_schema=ResearchReport,
+            )
+        except ValidationError as e:
+            # The API enforces the JSON shape; bounds such as confidence <= 1
+            # are checked by pydantic afterwards and can still fail.
+            out["error"] = f"partial report invalid: {e.errors()}"
+            return None
+        out["stop_reason"] = response.stop_reason
+    messages.append({"role": "assistant", "content": response.content})
+    return response.parsed
+
+
+def run_agent(question: str) -> tuple[ResearchReport | None, Path, str]:
+    """Returns (report, trace_path, outcome).
+
+    outcome is "report", "partial: <budget limit>", "refused: <reason>" or
+    "error: <reason>". A partial report is the best answer the model could
+    give when the budget ran out; treat it as such.
+    """
     trace_path = TRACES_DIR / f"capstone_{int(time.time())}_{uuid.uuid4().hex[:4]}.jsonl"
     tracer = Tracer(path=trace_path)
     budget = Budget()
@@ -328,22 +471,26 @@ def run_agent(question: str) -> tuple[ResearchReport | None, Path]:
         allowed, cleaned, reason = input_guard(question)
         if not allowed:
             run_out["refused"] = reason
-            print(f"[input_guard] refused: {reason}")
-            return None, trace_path
+            print(f"[input_guard] {reason}")
+            return None, trace_path, reason
 
         tools = [t.schema() for t in REGISTRY.values()]
         messages: list[dict] = [{"role": "user", "content": cleaned}]
         budget.start()
-        report: ResearchReport | None = None
+        schema_failures = 0
 
         while True:
             done, why = budget.exhausted()
             if done:
-                print(f"[budget] exhausted: {why}")
+                print(f"[budget] exhausted: {why}; asking for a partial answer")
                 run_out["budget_exhausted"] = why
-                break
+                partial = partial_report(tracer, messages, tools)
+                if partial is None:
+                    run_out["error"] = "no partial report"
+                    return None, trace_path, f"error: budget exhausted ({why}), no partial report"
+                return partial, trace_path, f"partial: {why}"
 
-            with tracer.span("llm_call", step=budget.steps + 1) as turn_out:
+            with tracer.span("llm_call", step=budget.steps + 1):
                 response = chat_with_retry(messages, system=SYSTEM, tools=tools)
             budget.steps += 1
             budget.tokens += response.input_tokens
@@ -353,46 +500,50 @@ def run_agent(question: str) -> tuple[ResearchReport | None, Path]:
             for tu in response.tool_uses:
                 print(f"  -> {tu['name']}({list(tu['input'].keys())})")
 
-            # If the model called submit_report, parse it and end.
-            for tu in response.tool_uses:
-                if tu["name"] == "submit_report":
-                    try:
-                        report = ResearchReport.model_validate(tu["input"])
-                    except ValidationError as e:
-                        # Schema-repair retry (Lesson 02/05).
-                        messages.append({
-                            "role": "user",
-                            "content": (
-                                "submit_report failed validation: "
-                                f"{e.errors()}. Try again with valid args."
-                            ),
-                        })
-                        continue
-                    return report, trace_path
-
             if response.stop_reason != "tool_use":
                 # Model gave a final text without calling submit_report.
-                # Treat as an error — we expected a report.
+                # Treat as an error: we expected a report.
                 run_out["error"] = "model did not call submit_report"
-                break
+                return None, trace_path, "error: model did not call submit_report"
 
-            # Otherwise, dispatch the tool calls and loop.
-            results = [dispatch(tracer, tu) for tu in response.tool_uses]
+            # Every tool_use of this turn gets its tool_result, in ONE user
+            # message, submit_report included: the API rejects a request in
+            # which a tool_use is not answered by the very next user message.
+            report: ResearchReport | None = None
+            results: list[dict] = []
+            for tu in response.tool_uses:
+                result = dispatch(tracer, tu)
+                if tu["name"] == "submit_report":
+                    if result.get("is_error"):
+                        # Schema repair (Lesson 02/05): the validation errors
+                        # go back as an is_error tool_result.
+                        schema_failures += 1
+                        result["content"] += " Fix these fields and call submit_report again."
+                    else:
+                        report = ResearchReport.model_validate(tu["input"])
+                results.append(result)
+
+            if report is not None:
+                # Done. The other tools of this turn ran; their results are
+                # not sent because there is no next request.
+                return report, trace_path, "report"
+
             messages.append({"role": "user", "content": results})
-
-    return report, trace_path
+            if schema_failures > MAX_SCHEMA_REPAIRS:
+                run_out["error"] = f"submit_report invalid {schema_failures} times"
+                return None, trace_path, f"error: schema repair cap ({MAX_SCHEMA_REPAIRS} retries) reached"
 
 
 if __name__ == "__main__":
     q = " ".join(sys.argv[1:]) or "How many vacation days do I get?"
     print(f"Q: {q}")
-    report, trace_path = run_agent(q)
+    report, trace_path, outcome = run_agent(q)
 
     if report is None:
-        print("\n(no report)")
+        print(f"\n(no report: {outcome})")
     else:
         ok, why = verify(report)
-        print(f"\n=== report ===")
+        print(f"\n=== report ({outcome}) ===")
         print(f"answer:     {report.answer}")
         print(f"citations:  {report.citations}")
         print(f"confidence: {report.confidence:.2f}")

@@ -1,6 +1,6 @@
-"""Lesson 05 — transport-layer retries with backoff and jitter.
+"""Lesson 05: transport layer retries with backoff and jitter.
 
-We wrap the chat() call in a hand-rolled retry decorator. The point is to
+We wrap the chat() call in a hand rolled retry decorator. The point is to
 SEE the exponential backoff and the classification of retryable vs.
 terminal errors. The SDK does this automatically with `max_retries`, but
 knowing the shape lets you override intelligently.
@@ -28,7 +28,7 @@ from src._llm import chat, LLMResponse
 def is_retryable(exc: BaseException) -> bool:
     """Decide whether the SDK exception is worth retrying.
 
-    Retryable: rate-limited (429), server hiccup (5xx), connection problems.
+    Retryable: rate limited (429), server hiccup (5xx), connection problems.
     Terminal: auth (401/403), bad request (400), content policy refusals.
     """
     if isinstance(exc, anthropic.RateLimitError):
@@ -74,15 +74,15 @@ def chat_with_retry(
     raise RuntimeError("unreachable")  # for type checkers
 
 
-# --- The SDK's built-in retry control --------------------------------------
+# --- The SDK's built in retry control --------------------------------------
 # The Anthropic SDK has its own retry logic. You can configure it with:
 #
 #   from anthropic import Anthropic
 #   client = Anthropic(max_retries=5)        # default is 2
-#   client.messages.create(..., timeout=30)  # per-request timeout
+#   client.messages.create(..., timeout=30)  # per request timeout
 #
-# Use the built-in retry for ordinary cases. Hand-roll only when you need
-# per-call control (e.g., longer backoff for known-flaky tools, or you
+# Use the built in retry for ordinary cases. Hand roll only when you need
+# per call control (e.g., longer backoff for known flaky tools, or you
 # want to log/measure each retry).
 
 

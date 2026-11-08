@@ -1,0 +1,6 @@
+{"id": "vacation_days", "input": "How many paid vacation days do full time employees get per year?", "must_contain": ["18"]}
+{"id": "vacation_rollover", "input": "Can I carry unused vacation days over to next year?", "must_contain": ["not roll", "doesn't roll", "does not roll", "don't roll", "no rollover", "cannot", "can't", "do not carry", "don't carry", "does not carry"], "match_any_of_contain": true}
+{"id": "hotel_cap_london", "input": "What is the nightly hotel cap for a business trip to London?", "must_contain": ["400"]}
+{"id": "sev1_customer_comms", "input": "During a SEV-1 incident, how soon must customers be informed?", "must_contain": ["30 minutes"]}
+{"id": "learning_stipend", "input": "How much is the yearly learning stipend?", "must_contain": ["2,000", "2000"], "match_any_of_contain": true}
+{"id": "out_of_scope_stock", "input": "What is Acme's stock ticker symbol?", "must_contain": ["not", "no information", "unable", "couldn't", "could not"], "match_any_of_contain": true, "must_not_contain": ["NASDAQ:", "NYSE:"]}

@@ -1,0 +1,6 @@
+{"id": "vacation_days", "input": "How many paid vacation days do full time employees get per year?", "must_contain": ["18"], "must_cite_any": ["vacation_policy.md"], "min_confidence": 0.6}
+{"id": "london_office_days", "input": "How many days per week are employees assigned to the London office expected on site?", "must_contain": ["two", "2"], "match_any_of_contain": true, "must_cite_any": ["remote_work.md"], "min_confidence": 0.6}
+{"id": "meal_receipt_memo", "input": "I paid 40 dollars for a team meal. Do I need a receipt, and what must the memo field include?", "must_contain": ["attendee"], "must_cite_any": ["expense_policy.md"], "min_confidence": 0.5}
+{"id": "phishing_report", "input": "Where do I forward a suspected phishing email?", "must_contain": ["phish@acme.com"], "must_cite_any": ["security.md"], "min_confidence": 0.6}
+{"id": "out_of_scope_pets", "input": "What is the policy on bringing pets to the office?", "max_confidence": 0.3}
+{"id": "off_topic_capital", "input": "What is the capital of Portugal?", "expect_refused": true}

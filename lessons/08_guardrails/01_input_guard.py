@@ -1,8 +1,8 @@
-"""Lesson 08 — input guard.
+"""Lesson 08: input guard.
 
 Runs on every user message BEFORE it reaches the LLM. Two checks:
-  1. Prompt-injection signature detection (regex-based).
-  2. PII detection (US SSN, credit-card-like) — block with explanation.
+  1. Prompt injection signature detection (regex based).
+  2. PII detection (US SSN, credit card like): block with explanation.
 
 Returns either a cleaned message or a refusal.
 
@@ -49,7 +49,7 @@ def input_guard(text: str, *, strip_injections: bool = True,
     reasons: list[str] = []
     cleaned = text
 
-    # 1. Prompt-injection: strip the offending phrase rather than blocking
+    # 1. Prompt injection: strip the offending phrase rather than blocking
     #    outright. The user might be quoting an attack.
     for pat in INJECTION_PATTERNS:
         if pat.search(cleaned):
@@ -58,7 +58,7 @@ def input_guard(text: str, *, strip_injections: bool = True,
     if not strip_injections:
         cleaned = text  # roll back if disabled
 
-    # 2. PII: block on the high-risk classes.
+    # 2. PII: block on the high risk classes.
     for name, pat in PII_PATTERNS.items():
         if name in block_on_pii and pat.search(cleaned):
             return GuardResult(
