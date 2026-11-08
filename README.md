@@ -34,10 +34,39 @@ A hands on course that teaches the engineering discipline of building LLM agents
 | 09 | [MCP and tool servers](lessons/09_mcp/README.md) | A stdio MCP server + client, and the API's MCP connector |
 | 09b | [Multi agent orchestration](lessons/09b_multi_agent/README.md) | Orchestrator worker and evaluator optimizer |
 | 09c | [Many tools](lessons/09c_many_tools/README.md) | Tool search, Skills, programmatic tool calling |
+| 09d | [Multi agent systems](lessons/09d_multi_agent_systems/README.md) | Sub agents as tools and handoffs, parallel agents on a shared blackboard, a compliance reviewer, tracing, hop limits and agent card routing across agents |
 | 10 | [Capstone](lessons/10_capstone/README.md) | A research agent that uses every prior topic |
 | 10b | [Harnesses](lessons/10b_harnesses/README.md) | Where these patterns live: Tool Runner, Agent SDK, Managed Agents |
 
 Lessons build on each other; do them in order.
+
+## The architecture at a glance
+
+Every agent in this course is the same loop with more parts plugged in. The core (Lessons 00 to 02) is a message list, one model call per turn through `src/_llm.py`, and a dispatcher that runs the tools the model asks for. Everything after that adds a module around the loop:
+
+```mermaid
+flowchart TD
+    U["User message"] --> IG["Input guard (08)"]
+    IG --> H["Message history, append only (00, 04)"]
+    H --> M["Model call via src/_llm.py (00, 00c, 02)"]
+    M --> S{"stop_reason?"}
+    S -->|tool_use| G["Tool argument guard (08)"]
+    G --> D["Dispatcher (01)"]
+    D --> T1["Local tools and retrieval (01, 03)"]
+    D --> T2["MCP servers (09)"]
+    D --> T3["Memory (04, 04b)"]
+    T1 --> R["Tool results, injection scan (08)"]
+    T2 --> R
+    T3 --> R
+    R --> H
+    S -->|end_turn| OG["Output guard (08)"]
+    OG --> A["Answer to the user"]
+    TR["Tracer: one span per step (07)"] -.-> M
+    TR -.-> D
+    B["Budget and retries (00, 05)"] -.-> M
+```
+
+Solid arrows are the data path of one turn; dotted arrows are the modules that watch every step. The top level [`capstone/`](capstone/README.md) wires exactly these modules (MCP, memory, guardrails, tracing) into one end to end agent, reusing the lessons' own code, and each lesson README opens with a diagram of its own loop.
 
 ## Setup
 
@@ -94,6 +123,7 @@ Learn Agents/
 │   └── _llm.py            ← the thin wrapper. The only place SDK calls live.
 ├── data/
 │   └── corpus/            ← small text corpus for RAG lessons
+├── capstone/              ← the modules wired into one end to end agent
 └── lessons/
     ├── 00_mental_model/   ← each lesson is a dir with README.md + .py files
     ├── 01_tool_calling/

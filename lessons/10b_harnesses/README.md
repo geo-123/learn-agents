@@ -16,6 +16,31 @@ A **harness** is everything around the model call: the loop, tool execution, con
 
 The Tool Runner and the Agent SDK sound alike and are often confused. The Tool Runner is a helper inside the ordinary API SDK that loops over tools you define; it has no built in tools and no filesystem access. The Agent SDK is Claude Code packaged as a library, with its own tools and harness. Neither hosts anything: that is what Managed Agents adds.
 
+## The loop at a glance
+
+```mermaid
+flowchart TB
+    M["Claude model"]
+    subgraph H1["Manual loop, this course"]
+        L1["Loop: your code"] --> T1["Tools: your functions"] --> R1["Runs on: your machine"]
+    end
+    subgraph H2["Tool Runner"]
+        L2["Loop: SDK tool_runner, max_iterations"] --> T2["Tools: your @beta_tool functions"] --> R2["Runs on: your machine"]
+    end
+    subgraph H3["Claude Agent SDK"]
+        L3["Loop: the Claude Code harness"] --> T3["Tools: built in file, shell, search, web, MCP, yours"] --> R3["Runs on: your machine or server"]
+    end
+    subgraph H4["Claude Managed Agents"]
+        L4["Loop: Anthropic, per session"] --> T4["Tools: built in toolset, MCP, skills, yours"] --> R4["Runs in: a container per session"]
+    end
+    L1 -->|calls| M
+    L2 -->|calls| M
+    L3 -->|calls| M
+    L4 -->|calls| M
+```
+
+The model call is the same in all four; read each column top to bottom to see who owns the loop, where the tools come from and where they execute. Moving right, more of the harness moves from your code to the SDK and then to Anthropic.
+
 ## The Tool Runner
 
 `client.beta.messages.tool_runner(...)` takes the same arguments as `messages.create`, plus `max_iterations`, and a list of tools made with the `@beta_tool` decorator. The decorator reads the function's type hints and docstring and produces the schema; the runner calls the model, runs your function for each `tool_use`, appends the results, and repeats until the model stops calling tools.

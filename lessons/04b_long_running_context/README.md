@@ -12,6 +12,26 @@ turn 20  [system][task][tool call][2k result][tool call][2k result] ... x20
 
 Three things go wrong as the transcript grows: **cost** (every turn resends everything), **quality** (answers get worse as the context fills with stale material, long before the window is full), and finally **the hard limit** (the request no longer fits). Each tool below attacks a different part of that.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    H["messages: append only history"] --> REQ["Request with betas"]
+    REQ --> CE["Server side context editing: clear old tool results, keep last 2"]
+    CE --> MOD["Model turn"]
+    TB["task_budget countdown, README snippet"] -.-> MOD
+    MOD --> APP["append full content, thinking included"]
+    APP --> H
+    MOD -->|"tool_use memory"| MEM["Harness runs view, create, str_replace and so on"]
+    MEM --> FS["memories folder on disk"]
+    MEM -->|"tool_result appended"| H
+    APP --> CHK{"Next request over COMPACT_AT_TOKENS?"}
+    CHK -->|"yes"| CMP["Compaction request: summarize"]
+    CMP -->|"whole history becomes one block"| H
+```
+
+Your harness only ever appends to `messages`; the two places the history shrinks are on the server (context editing, `02_clear_tool_results.py`) or a whole replacement by one compaction block (`01_compaction.py`), never an edit in the middle. The memory tool (`03_memory_tool.py`) keeps facts outside the history altogether. Task budgets have no script; the dotted box is the snippet further down.
+
 ## The rule that comes first: append, never edit
 
 Before any technique, one rule for the harness itself: **only ever append to `messages`.** Do not rewrite, reorder or delete earlier turns, and do not change the top level `system` prompt or the `tools` list mid conversation.

@@ -11,6 +11,29 @@
 
 Before going further: **the model has no memory.** Every API call is stateless. Anything that "remembers" is your code: appending to a list, writing to a file, or retrieving from a store. This is the same shift you did in Lesson 00 ("the LLM is a pure function"), now applied to state.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    IN["User types a turn"] --> AP["append to messages"]
+    AP --> PICK{"Which script?"}
+    PICK -->|"01 append all"| SEND["chat: system plus messages"]
+    PICK -->|"02 window"| W["View: first message, breadcrumb, last 4 turns"]
+    W --> SK1["strip_thinking on the view, full list kept"]
+    SK1 --> SEND
+    PICK -->|"03 summary"| SYS["Summary so far added to the system prompt"]
+    SYS --> SEND
+    SEND --> OUT["append assistant content"]
+    OUT --> IN
+    OUT -->|"03: input over 1500 tokens"| SUM["Summarize older messages, keep last 4"]
+    SUM --> SK2["strip_thinking on the kept messages"]
+    SK2 --> IN
+    SEND -->|"04: tool_use"| KV["remember, recall, list_memories"]
+    KV -->|"read and write"| FILE["memory_store.json, survives runs"]
+```
+
+Scripts 01 to 03 differ only in what they send, never in what the user typed: the window trims a copy, the summary moves old turns into the system prompt. `strip_thinking` appears exactly where the start of the history changed; the plain append in 01 sends every block back untouched. Script 04 is the odd one out: the model itself decides what to write to a file that outlives the process.
+
 ## Conversation memory: the naive version
 
 You're already doing this in every prior lesson. After each turn:

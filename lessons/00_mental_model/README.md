@@ -6,6 +6,27 @@ Before any tools, schemas, retries, or RAG, there is one shape you need in your 
 
 That sentence is the whole course. The remaining lessons are detailed answers to questions about each of those four words.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    A["Task as the first user message"] --> B{"Budget left? steps, tokens, seconds"}
+    B -->|no| X["Stop: budget exhausted"]
+    B -->|yes| C["Model call with the whole messages list"]
+    C --> D["Append the assistant turn"]
+    D --> E{"stop_reason is max_tokens?"}
+    E -->|yes| G["Warn: response truncated"]
+    E -->|no| F{"end_turn and text ends with DONE?"}
+    G --> F
+    F -->|yes| Y["Stop: clean finish"]
+    F -->|no| H{"Same text as last turn?"}
+    H -->|yes| S["Stop: stall detected"]
+    H -->|no| N["Append the user turn Continue."]
+    N --> B
+```
+
+This is `02_loop_with_budget.py`. The budget check comes first, before any money is spent, and every path either stops or appends to `messages` and goes round again. `01_loop.py` is the same loop with only the step cap and the `DONE` check; tools join the loop in Lesson 01.
+
 ## The LLM is a pure function
 
 An LLM, as exposed by any provider's API, is a stateless function:
@@ -109,11 +130,13 @@ uv run python lessons/00_mental_model/01_loop.py
 Builds on `01_loop.py` with **four** stop signals in priority order:
 
 1. **Budget** (`max_steps` / `max_seconds` / `max_input_tokens`): the hard, anti runaway stop. Checked *before* each LLM call so you don't pay for a doomed turn.
-2. **`stop_reason == "end_turn"`**: the model's own graceful "I'm done" signal. **Universal across providers** (Anthropic calls it `end_turn`; OpenAI calls it `"stop"`; Gemini `"STOP"`). The names differ; the concept is identical.
+2. **`stop_reason == "end_turn"`**: the model's own graceful "my turn is over" signal. **Universal across providers** (Anthropic calls it `end_turn`; OpenAI calls it `"stop"`; Gemini `"STOP"`). The names differ; the concept is identical. In this demo it stops the loop only together with `DONE` (see below).
 3. **Stall detector**: same response text two turns in a row. Without this, a stuck model can pile up turns until the budget catches it; cheaper to detect locally.
 4. **`max_tokens`** is *not* a done signal: it means the response was truncated. We log a warning and continue (a real agent might reprompt with a smaller request).
 
-The file also keeps the `DONE` keyword convention from `01_loop.py` as a *task specific explicit marker*, but `end_turn` is the primary check now. The pedagogy: **always have a hard budget; layer cheaper graceful stops on top.**
+The file also keeps the `DONE` keyword convention from `01_loop.py` as a *task specific explicit marker*, and here it is needed. `end_turn` says the model finished its *turn*, not the *task*. In a tool loop (Lesson 01) the two coincide: a turn that ends without a tool call is the final answer, so `end_turn` alone stops the loop. This demo has no tools and asks for one item per turn, so every turn ends with `end_turn` and the loop answers each one with `Continue.`; stopping on `end_turn` alone would end after the first name. So the graceful stop is `end_turn` **and** `DONE`, and a `DONE` in a truncated turn does not count. The pedagogy: **always have a hard budget; layer cheaper graceful stops on top.**
+
+What you should see: the task asks for 6 names with `max_steps=4`, so steps 1 to 4 each print one name with `stop_reason=end_turn`, then `[stop] budget exhausted: max_steps=4`. Raise `max_steps` to 7 to see the graceful path: six names, the last turn ends with `DONE`, and `[stop] end_turn + assistant said DONE` fires before the budget.
 
 ```powershell
 uv run python lessons/00_mental_model/02_loop_with_budget.py

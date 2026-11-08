@@ -6,6 +6,24 @@ The single highest ROI cost lever in agent engineering.
 
 This lesson is short because the mechanic is short. But cache aware prompt design is now a core skill: it's the difference between an agent that costs $0.10 per session and the same agent that costs $1.00.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    P["System block: instructions plus handbook"] -->|cache_control marker| K{"Prefix bytes match a live entry?"}
+    X["Timestamp inside the system block"] -.->|new bytes every call| K
+    K -->|no| W["Cache write: cache_creation_input_tokens"]
+    K -->|yes| R["Cache read: cache_read_input_tokens"]
+    W --> E["Entry lives 5 minutes, refreshed on read"]
+    E -.->|next call| K
+    U["User message, volatile text goes here"] --> T["Uncached tail: input_tokens"]
+    W --> M["Model answers"]
+    R --> M
+    T --> M
+```
+
+The first call of `01_cache_hits.py` takes the write path, the second the read path. The dotted timestamp edge is the broken pattern in `02_cache_invalidation.py`: the prefix changes on every call, so every call writes and none reads. The fix moves the timestamp into the user message, below the marker.
+
 ## What's actually cached
 
 When you mark a span of the prompt with `cache_control`, Anthropic's infrastructure stores the KV cache for *everything up to and including that span* under a content addressed hash. The next request whose prefix matches *byte for byte* up to that span gets a **cache hit**: those tokens are billed at the discounted rate and the model doesn't recompute them.

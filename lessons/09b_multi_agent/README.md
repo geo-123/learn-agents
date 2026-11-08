@@ -4,6 +4,30 @@ Up to this point every lesson has used **one** agent. Real production systems of
 
 The pattern vocabulary comes primarily from Anthropic's [Building Effective Agents](https://www.anthropic.com/research/building-effective-agents) (2024, expanded 2025 to 2026). It's the closest thing to canonical taxonomy.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    subgraph OW["01_orchestrator_worker.py"]
+        Q["Composite question"] --> DE["Orchestrator: 2 to 5 subquestions, structured output"]
+        DE --> W1["Worker 1"]
+        DE --> W2["Worker 2"]
+        DE --> WN["Worker N"]
+        W1 --> SY["Synthesizer: one answer with doc names"]
+        W2 --> SY
+        WN --> SY
+    end
+    subgraph EO["02_evaluator_optimizer.py"]
+        B["Brief"] --> G["Generator writes or revises the draft"]
+        G --> CR{"Critic verdict, structured output"}
+        CR -->|"revise, with issues"| G
+        CR -->|approve| OUT["Final draft"]
+        CR -->|"revise at max_iterations"| LAST["Last draft returned"]
+    end
+```
+
+On the left the workers run in a thread pool, each with its own context: the handbook in its system prompt and one subquestion, never the other workers' output. On the right the critic has a different system prompt and a rubric, and its issues travel back to the generator as feedback until it approves or the iteration cap ends the loop.
+
 ## When to reach for more than one agent
 
 The first question is *should you*. Multi agent systems are seductive and overused. The right time:
@@ -145,4 +169,4 @@ A generator drafts an internal announcement. A critic, with a different system p
 - **"A2A is the protocol for in process multi agent."** No: A2A is for cross process/cross vendor. In process is just function calls.
 - **"The orchestrator must be the strongest model."** Usually true for decomposition, but workers can be smaller cheaper models if the subtasks are constrained.
 
-Next: [Lesson 09c: Many tools](../09c_many_tools/README.md), then [Capstone: A research agent that uses every prior topic](../10_capstone/README.md).
+Next: [Lesson 09c: Many tools](../09c_many_tools/README.md), then [Lesson 09d: Multi agent systems](../09d_multi_agent_systems/README.md), which takes these patterns further: handoffs, parallel agents on a shared state, compliance gates, and tracing and budgets across agents.

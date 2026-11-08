@@ -7,6 +7,25 @@ Lesson 03a built a tiny retriever. Lesson 03b exposed it as a tool. This lesson 
 
 You'll see these under different names: LangChain's "self-RAG", LlamaIndex's "subquestion query engine", Cohere's rerank then fuse, Anthropic's contextual retrieval. The names vary; the shape is the same. The point of this lesson is the shape, not any one framework.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    Q["User question"] --> M["Model reads hits so far and reflects in text"]
+    M --> D{"stop_reason"}
+    D -->|"tool_use: new or refined query"| H["hybrid_search query, k"]
+    H --> T["TF-IDF ranking, top 2k"]
+    H --> B["BM25 ranking, top 2k"]
+    T --> F["rrf_fuse: sum of 1 over 60 plus rank"]
+    B --> F
+    F --> R["tool_result: top k ids and text"]
+    R -->|"appended, next step"| M
+    D -->|"end_turn"| A["Prose answer with inline citations"]
+    M -.->|"after 5 steps"| X["Stop without an answer"]
+```
+
+The fusion box is `01_hybrid_bm25.py`; the loop around it is `02_iterative_rag.py`. Both channels here are lexical (TF-IDF and BM25); swapping one for embeddings changes only a box under `hybrid_search`. The reflection is not a separate step: it is the text the model writes before it decides between another search and the answer.
+
 ## Hasn't long context killed RAG?
 
 For a few page corpus, yes: stuff it in the prompt and skip retrieval. But every real corpus exceeds context, and four problems remain even when it fits:

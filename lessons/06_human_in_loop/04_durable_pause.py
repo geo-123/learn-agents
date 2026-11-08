@@ -8,6 +8,13 @@ exactly where it stopped.
 This is the toy version of the pattern used in async approval workflows
 (Slack approvals, email based escalations, multi day reviews).
 
+One turn can hold several tool_use blocks, and the pause can come on any
+of them. The state therefore keeps the results the turn already produced,
+and resume finishes the turn (the pending call, then the calls after it,
+which may pause again) before it sends ONE user message with a
+tool_result for every tool_use of that turn. The API rejects a request in
+which a tool_use has no tool_result in the next user message.
+
 Run:
     1. First run (will pause and serialize):
        uv run python lessons/06_human_in_loop/04_durable_pause.py "Send 'hi' to alice"
@@ -130,24 +137,35 @@ def run(messages: list[dict], *, max_steps: int = 6) -> str | None:
         if response.stop_reason != "tool_use":
             return response.text
 
-        # Try dispatching every tool_use. If one needs approval, pause.
-        results: list[dict] = []
-        for tu in response.tool_uses:
-            try:
-                results.append(dispatch(tu, messages))
-            except PauseForApproval as pause:
-                _save_state({
-                    "id": str(uuid.uuid4()),
-                    "messages": messages,
-                    "pending_tool_use": pause.tool_use,
-                })
-                print(f"\n[paused] tool {pause.tool_use['name']} needs approval. "
-                      f"State serialized to {STATE_PATH}.")
-                return None
-
-        messages.append({"role": "user", "content": results})
+        if not _finish_turn(messages, [], response.tool_uses):
+            return None
 
     return "(max steps)"
+
+
+def _finish_turn(messages: list[dict], results: list[dict], remaining: list[dict]) -> bool:
+    """Dispatch the remaining tool_use blocks of the last assistant turn.
+
+    results holds the tool_results this turn already produced. When every
+    call is answered, appends them as ONE user message and returns True. When
+    a call needs approval, saves the state, results so far included, and
+    returns False.
+    """
+    for tu in remaining:
+        try:
+            results.append(dispatch(tu, messages))
+        except PauseForApproval as pause:
+            _save_state({
+                "id": str(uuid.uuid4()),
+                "messages": messages,
+                "turn_results": results,
+                "pending_tool_use": pause.tool_use,
+            })
+            print(f"\n[paused] tool {pause.tool_use['name']} needs approval. "
+                  f"State serialized to {STATE_PATH}.")
+            return False
+    messages.append({"role": "user", "content": results})
+    return True
 
 
 def _save_state(state: dict) -> None:
@@ -180,8 +198,15 @@ def resume(decision: str) -> str | None:
     else:
         raise ValueError(f"decision must be 'approve' or 'reject', not {decision!r}")
 
-    messages.append({"role": "user", "content": [tr]})
     STATE_PATH.unlink()  # consume the pending state
+
+    # Finish the turn: the results produced before the pause, this decision,
+    # then the calls after the pending one (one of them may pause again).
+    results: list[dict] = state.get("turn_results", []) + [tr]
+    turn = [b for b in messages[-1]["content"] if b.get("type") == "tool_use"]
+    after = [b["id"] for b in turn].index(pending["id"]) + 1
+    if not _finish_turn(messages, results, turn[after:]):
+        return None
     return run(messages)
 
 

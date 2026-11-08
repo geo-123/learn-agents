@@ -15,6 +15,26 @@ A tool based RAG agent is different:
 
 You'll also see a clean "implementation swap": the same `search_docs` tool, backed by either TF-IDF (free, lexical) or real embeddings (better, costs pennies). The agent code doesn't change: only what's behind the tool.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    U["User question"] --> M["chat: SYSTEM, tools, messages"]
+    M --> D{"stop_reason"}
+    D -->|"tool_use"| W{"Which tool?"}
+    W -->|"search_docs"| S["dispatch: validate query and k"]
+    S --> IX["TfidfIndex.search, top k"]
+    IX --> R["tool_result: hits with id, text, score"]
+    R -->|"appended as user turn"| M
+    D -->|"end_turn, 01_rag_tool.py"| A["Answer text citing chunk ids"]
+    W -->|"submit_answer, 03_with_citations.py"| F["FinalAnswer: answer, citations, confidence"]
+    F --> V{"verify_citations"}
+    V -->|"ids exist, overlap at least 20 percent"| OK["PASS"]
+    V -->|"unknown id or weak overlap"| BAD["FAIL"]
+```
+
+Retrieval is only one branch of the ordinary tool loop: the chunks come back as a `tool_result` and the model decides whether to search again. The citation check sits outside the loop, after the model has committed to its list of ids.
+
 ## Three things this lesson teaches
 
 ### 1. Retrieval as a tool

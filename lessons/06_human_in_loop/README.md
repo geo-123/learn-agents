@@ -12,6 +12,32 @@ Human in the loop (HITL) is the umbrella term for "the agent pauses, asks a huma
 
 This lesson builds all three. There's also a distinct primitive (**asking the user for information**) that's often conflated with approval and shouldn't be.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    M["Model turn"] --> D{"stop_reason tool_use?"}
+    D -->|"no"| A["Final answer"]
+    D -->|"yes"| P{"Policy: needs_approval or POLICY row"}
+    P -.->|"02 logs every decision"| AU["audit.jsonl"]
+    P -->|"auto"| RUN["Run the tool"]
+    P -->|"auto, 03"| ASK["ask_user: the human types the missing fact"]
+    P -->|"block"| BL["is_error: blocked by policy"]
+    P -->|"confirm, inline"| G{"Human: yes, no, or edit"}
+    G -->|"yes or edited args"| RUN
+    G -->|"no"| RJ["is_error: user rejected"]
+    P -->|"confirm, durable 04"| SAVE["Save messages, results of the turn so far and pending call to pending_state.json, exit"]
+    SAVE -->|"later: resume approve or reject"| RES["Load state, run or reject, delete file, dispatch the rest of the turn"]
+    RUN --> TR["tool_result appended"]
+    ASK --> TR
+    BL --> TR
+    RJ --> TR
+    RES --> TR
+    TR --> M
+```
+
+Every path ends in a `tool_result`, so a rejection or a block is just another message the model must handle. `ask_user` is an ordinary tool whose body happens to wait for a person; the approval gate sits in the dispatcher, before the tool body runs. The durable path is the inline gate with the wait moved to disk: `04_durable_pause.py` exits and a later `--resume` finishes the turn. A turn can hold several `tool_use` blocks and the pause can come on any of them, so the saved state keeps the results the turn already produced; resume adds the decision, dispatches the calls after the pending one (which may pause again) and then sends one user message with a `tool_result` for every `tool_use` of the turn, as the API requires.
+
 ## Approval vs. asking: two different things
 
 - **Approval**: the agent has decided to do X. It needs permission. Yes/no/modify.
@@ -104,7 +130,7 @@ A separate `ask_user(question)` tool for *information*, distinct from approval. 
 
 ### `04_durable_pause.py`
 
-The agent serializes itself to JSON, exits, and is resumed via `--resume`. A toy version of production async HITL, where the human might respond hours later.
+The agent serializes itself to JSON, exits, and is resumed via `--resume`. A toy version of production async HITL, where the human might respond hours later. Ask it to email two people at once to see a turn with two calls that each pause: the second pause comes during the first resume, and the second resume sends both results in one message.
 
 ## Key takeaways
 

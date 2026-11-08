@@ -2,6 +2,34 @@
 
 Lesson 01 had two tools. Lesson 09 showed how MCP makes it trivial to connect five servers with a dozen tools each. That is where a new problem starts: an agent with sixty tools is usually a *worse* agent than one with six. This lesson covers why, then builds the two fixes yourself, tool search and skills, with nothing but the Lesson 01 loop and the Lesson 03 retriever. Only then does it show the versions the API runs for you: tool search, Agent Skills and programmatic tool calling. It ends with the design advice that matters more than any of them: fewer, better tools.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    subgraph TS["01_tool_search_by_hand.py"]
+        M1["Model call: find_tools plus 3 HR tools"] -->|find_tools| BM["BM25 over the 40 tool catalog"]
+        BM -->|matches| ADD["Append full definitions to tools"]
+        ADD -->|new cache prefix| M1
+        M1 -->|loaded HR tool| RUN["Run the HR tool"]
+        RUN --> M1
+    end
+    subgraph SK["02_skills_by_hand.py"]
+        SP["System prompt: one line per skill"] --> M2["Model call: load_skill only"]
+        M2 -->|load_skill| CHK{"Name in index, path inside?"}
+        CHK -->|yes| MD["Full SKILL.md as tool result"]
+        CHK -->|no| ERR["Refusal as tool result"]
+        MD --> M2
+        ERR --> M2
+    end
+    subgraph API["03_tool_search.py"]
+        M3["Request: 40 tools, 37 with defer_loading"] -->|server_tool_use| SRV["Anthropic runs the search"]
+        SRV -->|tool_reference| EXP["API expands the matches"]
+        EXP -->|tool_use| YOU["Your code runs the tool"]
+    end
+```
+
+Compare what changes between requests. By hand, tool search grows the `tools` list, so the cache prefix starts over after every search; skills grow only the history, so the system prompt and tools stay fixed. The API version sends every definition each time and decides on its side which ones the model reads.
+
 ## Why many tools hurt
 
 Every tool definition is prompt text: name, description, JSON schema. It is sent on every request and read by the model before it does anything.
@@ -255,4 +283,4 @@ Thirty fake expense reports and one `get_expense` tool callable only from code. 
 - **"Programmatic tool calling runs my tools in Anthropic's sandbox."** The script runs there; your tools still run in your process, one `tool_use` at a time.
 - **"`allowed_callers` stops direct calls."** It guides the model. Validate every call regardless.
 
-Next: [Lesson 10: Capstone](../10_capstone/README.md).
+Next: [Lesson 09d: Multi agent systems](../09d_multi_agent_systems/README.md).

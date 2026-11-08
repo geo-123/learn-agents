@@ -8,6 +8,22 @@ The term was coined by Tobi Lütke (Shopify) in mid 2025, amplified by Andrej Ka
 
 If Lesson 00 taught you the agent loop, this lesson teaches you the shape of every message that goes into it.
 
+## The loop at a glance
+
+```mermaid
+flowchart LR
+    P["Static prefix: system prompt, tool definitions, examples"] --> W["Context window for this turn"]
+    H["Conversation history"] --> W
+    R["Retrieved chunks"] --> W
+    S["Stateful: summary, scratchpad, memory"] --> W
+    U["Latest user message"] --> W
+    W --> M["Model call"]
+    M --> O["Assistant turn and tool results"]
+    O -->|appended, grows every turn| H
+```
+
+Every turn, the request is assembled again from these sources. The static prefix should stay byte for byte the same (that is what prompt caching reads, Lesson 02b); the history is the part that grows. `01_context_rot.py` makes a single call whose user message carries a retrieved haystack with the needle at the start, middle or end.
+
 ## Why a new name
 
 By 2026, "prompt engineering" sounds like a single human written string of clever instructions. That mental model breaks the moment your agent:

@@ -6,6 +6,24 @@ Lesson 00b showed that current models think between tool calls. This lesson is a
 
 Every later lesson runs on these defaults, so it pays to see them once with your own eyes.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    A["User message"] --> B["Request with tools, effort, adaptive thinking"]
+    B --> C["Response blocks: thinking first, then text or tool_use"]
+    C --> D["Append every block unchanged, signatures included"]
+    D --> E{"stop_reason is tool_use?"}
+    E -->|no| F["Answer: read the text block by type"]
+    E -->|yes| G["Run read_policy for each tool_use"]
+    G --> H["tool_result blocks, is_error on an unknown name"]
+    H --> I["Append them as one user turn"]
+    I -->|next turn, up to 5| B
+    K["Old knobs: budget_tokens or temperature"] -->|HTTP 400| Z["Rejected before the model runs"]
+```
+
+This is the tool loop of `02_see_the_thinking.py`. Watch the append step: thinking blocks go back exactly as they came, even when their text is empty, because the next request checks their signatures. The side branch is `03_old_knobs_fail.py`: the old settings never reach the model.
+
 ## What thinking is, mechanically
 
 Start from Lesson 00: the model produces text one token at a time, and each token is conditioned on everything before it. "Thinking" is nothing more exotic than letting the model produce tokens *before* the answer that the answer can then condition on: working, checking, planning. A model trained to do this well spends those tokens where they help. You could approximate it yourself with a prompt ("reason step by step inside `<scratch>` tags, then answer") and a parser that cuts the scratch part out; that was the state of the art before reasoning models.

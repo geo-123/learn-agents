@@ -4,6 +4,31 @@ In Lesson 00 the loop was empty: the model talked to itself until it said DONE. 
 
 This is the most mechanically important lesson in the course. Tool calling is the protocol that lets an LLM cause effects in the real world, and almost every "agentic capability" (RAG, code execution, web access, calling internal APIs) is just tool calling with a different tool on the other end.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    R["Registry: name, description, args model, function"] --> S["Tool schemas sent with every request"]
+    U["User task"] --> M["Model call"]
+    S --> M
+    M --> A["Append the assistant turn"]
+    A --> Q{"stop_reason is tool_use?"}
+    Q -->|no| F["Final text answer"]
+    Q -->|yes| D["dispatch each tool_use block"]
+    D --> K{"Name in the registry?"}
+    K -->|no| E["tool_result with is_error"]
+    K -->|yes| V{"Args validate?"}
+    V -->|no| E
+    V -->|yes| X{"Function raises?"}
+    X -->|yes| E
+    X -->|no| OK["tool_result with JSON content"]
+    E --> B["All results in one user turn"]
+    OK --> B
+    B -->|next step, up to max_steps| M
+```
+
+This is `02_tool_dispatch.py`. Every failure becomes an `is_error` result the model can read, never a crash. When the model asks for several tools in one turn (`03_parallel_tools.py`), each `tool_use` gets its own `tool_result`, matched by `tool_use_id`, and all of them go back together in a single user turn.
+
 ## What tool calling actually is
 
 You describe to the model what functions are available. Each function gets:

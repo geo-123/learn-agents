@@ -4,6 +4,28 @@ Everything fails. The network drops packets, the model returns garbage, your too
 
 The trap most newcomers fall into is "wrap everything in try/except, retry 3 times, move on." That's how you send three emails. Retry logic isn't one concept: it's three different concepts depending on *where* the failure happened.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    BG{"Budget left: steps, seconds, tokens?"} -->|"no"| STOP["Stop: budget exhausted"]
+    BG -->|"yes"| CALL["chat_with_retry"]
+    CALL --> TR{"Transport error?"}
+    TR -->|"429, 5xx, connection"| WAIT["Backoff with jitter, up to 4 attempts"]
+    WAIT --> CALL
+    TR -->|"400, 401, 403, or attempts used up"| RAISE["Raise to the caller"]
+    TR -->|"response arrived"| OUT{"Structured output valid?"}
+    OUT -->|"ValidationError"| FIX["Errors appended as user turn, max 3"]
+    FIX --> CALL
+    OUT -->|"parsed is None"| TERM["Raise: refusal or cut off"]
+    OUT -->|"valid"| TU{"stop_reason tool_use?"}
+    TU -->|"no"| DONE["Final answer"]
+    TU -->|"yes"| EX["dispatch: result, or is_error if it raised"]
+    EX -->|"tool_result, next turn"| BG
+```
+
+Each script builds one layer (01 transport, 02 model output, 03 tool execution, 04 budget); the diagram stacks them the way one agent step meets them. Only the transport layer repeats the same request. A bad output and a failed tool both go back to the model as messages, so the model decides how to retry, rephrase or fall back, and the budget check before every turn bounds all of it.
+
 ## The three failure layers
 
 Every agent step lives at one of three layers. Each has its own retry strategy:

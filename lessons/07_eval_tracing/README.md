@@ -14,6 +14,30 @@ This lesson covers:
 3. An eval harness: a fixture file, deterministic checks, pass/fail aggregation.
 4. LLM as judge: rubric based scoring for things deterministic checks can't measure.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    subgraph TR["Tracing: 01_trace_jsonl.py"]
+        R["agent_run span"] -->|parent of| S["step span"]
+        S -->|parent of| L["llm_call span"]
+        L --> D{"stop_reason tool_use?"}
+        D -->|"yes, max 2 steps"| S
+        D -->|no| J["JSONL file, one line per span"]
+        J --> V["02_trace_viewer.py prints the tree"]
+    end
+    subgraph EV["Evaluation: 03_eval_fixtures.py and 04_llm_judge.py"]
+        F["fixtures.jsonl"] --> A["RAG agent from Lesson 03b"]
+        A --> AN["Answer"]
+        AN --> C["Deterministic checks: must_contain, must_not_contain"]
+        AN --> JU["LLM judge with a rubric"]
+        C --> P["PASS or FAIL per fixture, total"]
+        JU --> SC["Faithfulness and helpfulness 1 to 5, averages"]
+    end
+```
+
+In the tracing box every `with tracer.span(...)` opens a child of the span around it and writes one JSONL line when it closes; the demo calls no tools, so it has no `tool_call` span, which would nest under its step the same way. In the evaluation box the same fixtures run through the Lesson 03b agent, then through the deterministic checks of `03` and the rubric judge of `04`.
+
 ## Tracing: what's a "span"?
 
 Borrow OpenTelemetry's vocabulary. A trace is a tree of spans. Each span has:

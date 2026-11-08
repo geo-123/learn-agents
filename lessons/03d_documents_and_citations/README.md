@@ -6,6 +6,25 @@ The Messages API can do this natively. You send your sources as **document** blo
 
 This lesson covers what you can put in a message besides text (documents and images), how native citations come back, and two rules from API version `2026-10-21` that decide which role a document or a cited answer may sit in.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    SRC["Handbook files, TF-IDF chunks, or a PDF"] --> DOC["document blocks, citations enabled"]
+    IMG["image block, no citations"] --> U
+    DOC --> U["User turn: documents first, question last"]
+    U --> C["chat call"]
+    C --> ANS["Answer: text blocks, each with its citations"]
+    ANS --> CK["Check cited_text against the source characters"]
+    ANS -->|"same conversation"| AS["Assistant turn, unchanged"]
+    AS --> FU["Follow up question still works"]
+    ANS -->|"hand off"| STR["strip_citations: keep the text only"]
+    STR --> RV["Reviewer gets it in a user turn"]
+    ANS -.->|"cited blocks in a user turn"| E400["400 on API 2026-10-21"]
+```
+
+Sources only ever enter through the user turn, and the answer only ever leaves with its citations in the assistant role. The dotted edge is the mistake `03_compare_with_03b.py` avoids: any hand off to another prompt goes through `strip_citations` first.
+
 ## What a user message can hold
 
 A user message's `content` is a list of blocks. Besides `text`:

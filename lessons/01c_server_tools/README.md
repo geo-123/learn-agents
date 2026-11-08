@@ -4,6 +4,27 @@ In Lesson 01 every tool was yours: you wrote the function, validated the argumen
 
 Anthropic also offers tools it runs for you: web search, web fetch and code execution. Before renting them, build the same two capabilities yourself with the Lesson 01 loop. Then you know exactly what the server versions do, what they save you, and what they cannot do.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    Q["User question"] --> R["Request with client and server tools"]
+    subgraph API["Inside the API"]
+        M["Model turn"] -->|server_tool_use| W["web_search runs at Anthropic"]
+        W -->|result block, same response| M
+    end
+    R --> M
+    M --> A["Append assistant content unchanged"]
+    A --> S{"stop_reason?"}
+    S -->|pause_turn, resend as is| R
+    S -->|tool_use| C["Your code runs search_handbook"]
+    C --> T["tool_result blocks in a user turn"]
+    T --> R
+    S -->|end_turn| F["Answer"]
+```
+
+This is the loop of `04_mixed_client_and_server.py`. The server tool never reaches your code: its call and its result arrive inside the same response. Only `tool_use` sends work your way, and `pause_turn` is answered by sending the same request again, with no new user message. When both kinds are asked for in one turn, the server call waits and runs at the start of the next request.
+
 ## Part 1: build it yourself
 
 `01_build_your_own.py` adds two ordinary client tools to the Lesson 01 registry and dispatcher. Nothing in the loop changes. Each tool is a pydantic model, a function and a description.

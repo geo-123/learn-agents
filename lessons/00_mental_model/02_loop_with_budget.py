@@ -8,13 +8,17 @@ shows four kinds of stop, in priority order:
                                   The ANTI RUNAWAY defense. Always have one.
   2. stop_reason == "end_turn": the GRACEFUL, model initiated signal.
                                   Universal across providers (see note below).
+                                  It means "my turn is over", not "the task
+                                  is done". This demo asks for one item per
+                                  turn, so every turn ends with end_turn; here
+                                  it stops the loop only together with DONE.
   3. Stall detector: same text two turns in a row.
                                   Catches "stuck" loops the model can't
                                   recognize itself.
   4. DONE keyword (kept from 01): a task specific, explicit signal.
-                                  Useful when downstream code needs an
-                                  unambiguous "agent declared completion"
-                                  marker beyond stop_reason.
+                                  The marker that tells "turn over" apart
+                                  from "task complete" when, as here, the
+                                  loop itself keeps asking for more turns.
 
 Note on cross provider portability of `stop_reason`:
     Anthropic    : stop_reason = "end_turn" | "max_tokens" | "tool_use" | "stop_sequence"
@@ -107,20 +111,18 @@ def run_agent(task: str, budget: Budget) -> list[dict]:
             # In a real agent you'd either raise OR raise max_tokens and
             # retry the same turn. For the lesson we just keep going.
 
-        # --- Stop check 3: end_turn (graceful, universal) ------------------
-        # The model signaled it's done speaking. Take it at face value
-        # unless DONE keyword logic below adds more nuance.
-        if response.stop_reason == "end_turn":
-            # If the task asked for an explicit DONE marker and the model
-            # didn't include it, that's slightly suspicious: log it but
-            # accept end_turn as the authority.
-            current = response.text.strip()
-            if current.endswith("DONE"):
-                print("\n[stop] end_turn + assistant said DONE  (clean finish)")
-            # else:
-            #     print("\n[stop] end_turn without DONE marker  "
-            #           "(model considers itself done)")
-                return messages
+        # --- Stop check 3: end_turn plus DONE (graceful) ------------------
+        # end_turn means the model finished its TURN, not the task. In a tool
+        # loop (Lesson 01) that difference rarely matters: a turn that ends
+        # without a tool call is the answer, so end_turn alone stops the loop.
+        # This loop has no tools and the system prompt asks for one item per
+        # turn, so EVERY turn ends with end_turn, and this loop answers each
+        # one with "Continue.". end_turn alone would stop after the first
+        # item; the DONE marker says the task is complete. Both must hold:
+        # DONE in a truncated (max_tokens) turn does not count.
+        if response.stop_reason == "end_turn" and response.text.strip().endswith("DONE"):
+            print("\n[stop] end_turn + assistant said DONE  (clean finish)")
+            return messages
 
         # --- Stop check 4: stall detector ----------------------------------
         # Two identical turns in a row means we're not making progress.
@@ -132,7 +134,7 @@ def run_agent(task: str, budget: Budget) -> list[dict]:
             return messages
         previous_text = current
 
-        # The model didn't end_turn yet: nudge it to continue.
+        # The task is not complete yet: nudge the model to continue.
         messages.append({"role": "user", "content": "Continue."})
 
 

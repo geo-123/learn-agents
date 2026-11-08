@@ -3,3 +3,4 @@
 {"id": "meal_receipt_memo", "input": "I paid 40 dollars for a team meal. Do I need a receipt, and what must the memo field include?", "must_contain": ["attendee"], "must_cite_any": ["expense_policy.md"], "min_confidence": 0.5}
 {"id": "phishing_report", "input": "Where do I forward a suspected phishing email?", "must_contain": ["phish@acme.com"], "must_cite_any": ["security.md"], "min_confidence": 0.6}
 {"id": "out_of_scope_pets", "input": "What is the policy on bringing pets to the office?", "max_confidence": 0.3}
+{"id": "off_topic_capital", "input": "What is the capital of Portugal?", "expect_refused": true}

@@ -7,6 +7,29 @@ Two things to internalize:
 1. Guardrails reduce specific risks. They do **not** make a system "safe."
 2. Every guardrail is overhead. Be surgical.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    U["User message"] --> IG{"Input guard 01: strip injections, check PII"}
+    IG -->|PII found| REF["Refusal, no model call"]
+    IG -->|cleaned text| M["Model call"]
+    M -->|tool_use| AG{"Tool argument guard 03: recipient allowed?"}
+    AG -->|blocked| ERR["tool_result with is_error"]
+    AG -->|"allowed or no guard"| X["Run the tool"]
+    X --> SC{"Scan search result 05: looks like instructions?"}
+    SC -->|yes| Q["Quarantine the chunk"]
+    SC -->|no| W["Wrap in untrusted_tool_output tags"]
+    Q --> W
+    W --> M
+    ERR --> M
+    M -->|no tool_use| OG{"Output guard 02: redact, on topic?"}
+    OG -->|off topic| POL["Polite refusal"]
+    OG -->|on topic| OUT["Redacted answer to the user"]
+```
+
+The diagram puts the guards of `01`, `02`, `03` and `05` into one agent; each script builds its own placement on its own small loop, and `04` runs `01` and `02` around a single model call. Look at where each guard sits: on a boundary where text crosses into or out of the model, or where an intent turns into a side effect.
+
 ## Three placements
 
 | Where | What it filters | Example |

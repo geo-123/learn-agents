@@ -10,6 +10,26 @@ We will write a tiny search engine from scratch in ~40 lines of NumPy. No vector
 
 Once these are clear, swapping NumPy for Pinecone or TF-IDF for OpenAI embeddings is just changing the implementation behind a fixed interface. Lesson 03b does that swap.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    subgraph offline ["Offline, built once"]
+        CORP["data/corpus/*.md"] --> CH["chunk_markdown: split at headers"]
+        CH --> IDX["TfidfIndex: vocabulary, IDF, normalized matrix"]
+    end
+    subgraph online ["Query time, every question"]
+        Q["Query text"] --> VEC["_vectorize: same vocabulary and IDF"]
+        VEC --> COS["matrix @ q: cosine score per chunk"]
+        COS --> TOP["argsort: top k chunks"]
+        TOP -->|"03_rerank.py only"| RR["LLM scores top 8 from 0 to 5"]
+        RR --> BEST["Best 3 by relevance"]
+    end
+    IDX --> COS
+```
+
+The top box runs once per corpus; the bottom box runs per question and only reads the matrix. The query goes through the same vocabulary and IDF as the chunks, which is why a word the corpus never uses simply drops out. When the words miss, the right chunk can still sit low in the list, so `03_rerank.py` fetches a wider top 8 and lets the model reorder them.
+
 ## Why not just stuff the whole corpus in the prompt?
 
 Three reasons:

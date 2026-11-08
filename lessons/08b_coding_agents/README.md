@@ -4,6 +4,31 @@ The most common agent in use today does not answer questions. It reads files, ch
 
 Nothing new is needed to build one. It is the Lesson 00 loop with two tools that touch the real machine. What changes is the stakes: a wrong answer is text you can ignore, a wrong command deletes your work. So this lesson is mostly about the harness around the loop: where the agent may work, what it may run, who approves, and how you check the result.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    T["Task"] --> M["Model call with bash or text editor tool"]
+    M -->|tool_use| K{"Which tool?"}
+    K -->|text editor 01| P{"Path inside the sandbox?"}
+    P -->|no| E["tool_result with is_error"]
+    P -->|yes| ED["view, create, str_replace, insert"]
+    K -->|bash 02| C{"Policy: operators, allowlist"}
+    C -->|block| E
+    C -->|confirm| H{"Human approves?"}
+    H -->|no| E
+    H -->|yes| R["Run argv, no shell, timeout, output cap"]
+    C -->|auto| R
+    ED --> M
+    R --> M
+    E --> M
+    M -->|no tool_use| V["Harness verifies 01"]
+    V --> TS["Fixed test command, before and after"]
+    V --> D["Diff of the changed file"]
+```
+
+The model only proposes; every arrow out of "Which tool?" passes a check the harness owns before anything touches the sandbox, and every refusal goes back to the model as an error it can read. Script `01` uses only the text editor and ends with the test and diff check, script `02` uses only bash behind the `auto`, `confirm`, `block` table.
+
 ## The two Anthropic defined tools
 
 Lesson 01 tools are yours: you write the name, description and JSON schema. The bash tool and the text editor tool are different. Anthropic defines them, the model is trained on them, and you declare them by `type` and `name` only:

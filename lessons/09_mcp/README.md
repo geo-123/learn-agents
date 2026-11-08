@@ -6,6 +6,43 @@ In Lesson 01 you hand wired tools into the agent. Every agent application had it
 
 Anthropic introduced MCP and ships first class support in Claude Desktop and Claude Code. The protocol itself is open and vendor neutral: anyone can write a server, anyone can write a client.
 
+## The loop at a glance
+
+```mermaid
+sequenceDiagram
+    participant L as Agent loop in 02_mcp_client.py
+    participant C as mcp Client
+    participant S as Server in 01_mcp_server.py
+    participant A as Claude API
+    participant R as Remote MCP server
+    L->>C: enter async with Client
+    C->>S: spawn subprocess, handshake over stdio
+    L->>C: list_tools()
+    C->>S: tools/list
+    S-->>C: names, descriptions, schemas
+    C-->>L: tool list
+    Note over L: to_anthropic_tools()
+    loop until no tool_use or max_steps
+        L->>A: messages and tools
+        A-->>L: tool_use blocks
+        L->>C: call_tool(name, args)
+        C->>S: tools/call over stdio
+        S-->>C: content blocks and is_error
+        C-->>L: text, flattened
+        Note over L: append tool_result
+    end
+    L->>C: leave the block
+    C->>S: shut the subprocess down
+    opt MCP connector instead, beta
+        L->>A: mcp_servers and an mcp_toolset
+        A->>R: list and call tools over Streamable HTTP
+        R-->>A: results
+        A-->>L: mcp_tool_use and mcp_tool_result blocks
+    end
+```
+
+The `loop` box is the Lesson 01 dispatch loop: the only change is that `call_tool` crosses a process boundary instead of calling a Python function. In the `opt` box the API itself is the client, so your code has no loop over the server's tools at all.
+
 ## What MCP actually is
 
 It's a **protocol**, like HTTP or LSP. Three primitives:

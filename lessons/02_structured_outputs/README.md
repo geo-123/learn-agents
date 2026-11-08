@@ -4,6 +4,26 @@ Most nontrivial agents need to **return typed data**, not just free text. A rese
 
 Lesson 01 ended with a tool used as a typed mailbox for the answer. This lesson shows the direct way: the API constrains the answer itself to your schema. Then it covers what the schema cannot catch, and how to repair it.
 
+## The loop at a glance
+
+```mermaid
+flowchart TD
+    P["Pydantic model or schema dict"] --> T["model_json_schema, then transform_schema"]
+    T --> O["Request with output_config.format"]
+    O --> D["Constrained decoding: grammar masks forbidden tokens"]
+    D --> S{"stop_reason is end_turn?"}
+    S -->|no, max_tokens or refusal| N["parsed stays None"]
+    S -->|yes| J["json.loads, model_validate for a Pydantic class"]
+    J --> V{"Your stricter validator passes?"}
+    V -->|yes| K["Return the typed object"]
+    V -->|no| E["Append the answer, then a user turn with the errors"]
+    E --> L{"Attempts left?"}
+    L -->|yes, up to 3| O
+    L -->|no| G["RuntimeError: give up"]
+```
+
+The top half is what `chat(..., output_schema=...)` does in `src/_llm.py`: the API guarantees the shape, so parsing cannot fail on a finished answer. The bottom half is `04_repair_loop.py`: rules the schema does not express are checked in your code, and a failure goes back to the model as a new user turn, never as an edit of the old one.
+
 ## Routes to structured output
 
 ### Route 1: prompt and parse (the brittle way)

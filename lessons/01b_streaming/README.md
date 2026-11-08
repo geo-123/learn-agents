@@ -6,6 +6,32 @@ Every lesson so far waited for the whole response, then printed it. That works f
 
 This lesson calls the SDK directly through `client()`, because `chat()` in `src/_llm.py` deliberately does not stream. It starts at the wire: you read the raw stream and build the message yourself. Only then does it hand the job to the SDK helper.
 
+## The loop at a glance
+
+```mermaid
+sequenceDiagram
+    participant C as Your code
+    participant A as Messages API
+    C->>A: request with stream true
+    A-->>C: message_start
+    Note over C: keep the message shell, content empty
+    loop each content block
+        A-->>C: content_block_start
+        Note over C: append the block at its index
+        loop many times
+            A-->>C: content_block_delta
+            Note over C: grow text or thinking, set signature, buffer partial_json
+        end
+        A-->>C: content_block_stop
+        Note over C: json.loads the buffered tool input
+    end
+    A-->>C: message_delta
+    Note over C: set stop_reason, overwrite usage
+    A-->>C: message_stop
+```
+
+This is the assembly `01_sse_by_hand.py` does by hand (it also skips `ping` events and raises on an `error` event). Notice where `stop_reason` arrives: second to last, so nothing before it tells you whether the turn is complete. `04_stream_tool_loop.py` then appends the finished message and runs the tools as in Lesson 01.
+
 ## Why stream
 
 - **Time to first token.** A user who sees words after one second waits patiently for ten more. A user who sees a spinner for eleven seconds does not. The total time is the same; the experience is not.
