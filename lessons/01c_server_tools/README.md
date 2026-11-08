@@ -2,15 +2,80 @@
 
 In Lesson 01 every tool was yours: you wrote the function, validated the arguments, ran it, and sent a `tool_result` back. That is a **client tool**. The model only ever asks; your code does the work.
 
+Anthropic also offers tools it runs for you: web search, web fetch and code execution. Before renting them, build the same two capabilities yourself with the Lesson 01 loop. Then you know exactly what the server versions do, what they save you, and what they cannot do.
+
+## Part 1: build it yourself
+
+`01_build_your_own.py` adds two ordinary client tools to the Lesson 01 registry and dispatcher. Nothing in the loop changes. Each tool is a pydantic model, a function and a description.
+
+### `fetch_url(url)`: reading the web
+
+An HTTP GET with `urllib.request` from the standard library, plus the guards any fetch tool needs:
+
+- **A domain allowlist.** Only `python.org` and its subdomains. The host is checked again after redirects, because a redirect can carry the request anywhere.
+- **Only `http` and `https`.** A `file://` URL would read your own disk.
+- **A timeout, a byte cap and a character cap.** A slow server stalls the loop; a huge page fills the context and the bill.
+- **HTML to plain text** by a crude tag strip (drop `script` and `style`, drop tags, collapse whitespace).
+- **Errors as `is_error` tool results.** A blocked domain, a 404 or a timeout goes back to the model as text it can read and work around, exactly like Lesson 01.
+
+What it lacks is what a web *search* tool is made of:
+
+- **A search index.** `fetch_url` needs a URL. Finding the right page among billions means crawling and indexing the web.
+- **Ranking.** Deciding which pages answer the question is most of a search engine's value, and years of work.
+- **Freshness.** An index is recrawled continuously. Your fetch sees one page, once.
+- **Robust reading.** No JavaScript (python.org's own page says its interactive scripts did not run), no PDF, no caching, no politeness limits per site.
+
+Fetching a page is a few lines. Search quality is the part worth renting.
+
+### `run_python(code)`: running the model's code
+
+The model writes a script; the tool runs it with `subprocess`:
+
+- **A fresh temporary folder** per call, deleted afterwards. No state carries over between calls.
+- **`sys.executable -I`**: your own interpreter in isolated mode, which ignores `PYTHON*` variables, the user site folder and the current folder on `sys.path`.
+- **A minimal `env`.** The child inherits no API keys, tokens or proxy credentials. On Windows only `SYSTEMROOT` is passed through, because Python needs it to start.
+- **No shell, a timeout, an output cap.** An endless loop is killed after 10 seconds and comes back as an `is_error` result.
+- **Approval before every run** (Lesson 06): the script is printed and you answer `y` or `n`. `--yes` skips the prompt. A declined run is an `is_error` result, not a crash.
+- **The same result shape as the server tool**: `return_code`, `stdout`, `stderr`.
+
+What it does **not** isolate, and this is the important part:
+
+- **Filesystem.** The code runs as you. It can read your home folder, your SSH keys and this repository, and delete anything you can delete.
+- **Network.** It can open sockets and send what it read anywhere.
+- **CPU, memory, processes.** The timeout stops the main process. A child process it started, a memory bomb or a full disk are not stopped.
+
+Approval is the only real guard here, and it only works while a person reads every script. A real sandbox is a container or a virtual machine: its own filesystem, no network, quotas, thrown away after use (Lesson 08b says the same for coding agents). Building and operating that is exactly what the code execution server tool does for you.
+
+### What the two tools show
+
+- **A tool is just your code behind a schema.** The model part is trivial: a name, a description, a JSON schema, a dispatcher. Both tools went through the same `dispatch()` as `get_weather` in Lesson 01.
+- **The hard parts are not the call.** They are isolation (what the code can touch), search quality (which page to read), and limits (time, bytes, domains, cost). Those are what you pay for when you use a server tool.
+
+Run `01_build_your_own.py --check` to exercise both tools without an API key: a snippet, an endless loop, a blocked domain, a `file://` URL and python.org.
+
+## Part 2: what changes when Anthropic runs it
+
 A **server tool** is the other kind. Anthropic wrote it and Anthropic runs it. You declare it in `tools` with a dated `type` string and no schema, and the API executes it inside the same request. The calls and their results come back as content blocks in the response you already get. No dispatcher, no `tool_result`, no second request.
 
 Three server tools cover most needs:
 
-- **Web search** (`web_search`): runs queries, returns results, and Claude answers with citations to the pages.
-- **Web fetch** (`web_fetch`): reads the full text of a URL (HTML, text, or PDF).
-- **Code execution** (`code_execution`): a sandboxed Linux container where Claude runs Bash and Python and edits files.
+- **Web search** (`web_search`): runs queries against a web search index, returns ranked results, and Claude answers with citations to the pages. This is the index, ranking and freshness `fetch_url` lacks.
+- **Web fetch** (`web_fetch`): reads the full text of a URL (HTML, text, or PDF). The server version of `fetch_url`.
+- **Code execution** (`code_execution`): a sandboxed Linux container where Claude runs Bash and Python and edits files. The isolation `run_python` lacks.
 
-They change what you build, not how the loop thinks. The model still decides when to call a tool. The difference is who runs it, who pays for it, and where your data goes.
+The loop shape stays the same: the model still decides when to call a tool, and a tool call is still a block with an id and an input. What moves:
+
+| | `01_build_your_own.py` | Server tool |
+|---|---|---|
+| Where it runs | Your process, as you | Anthropic's infrastructure, in a container with no network (code execution) |
+| When the result arrives | In your next request, as a `tool_result` you build | In the same response, as a result block the server built |
+| Long work | Your loop, your step budget | The server loops; on a long turn it stops with `pause_turn` and you resend |
+| Errors | Your `is_error` result | A result block with an `error_code`, inside an HTTP 200 |
+| Limits | Your constants (timeout, byte cap, allowlist) | Tool settings: `max_uses`, `allowed_domains`, `max_content_tokens`, the container's time limit |
+| Cost | Your machine, your bandwidth | Billed per search or per container hour, plus every result as input tokens |
+| Privacy | Data stays on your machine | Queries, URLs and code leave your network |
+
+The rest of this lesson covers those differences in detail. They change what you build, not how the loop thinks. The difference is who runs it, who pays for it, and where your data goes.
 
 ## Client tools vs server tools
 
@@ -132,7 +197,7 @@ Use a server tool when the capability is generic (the public web, a scratch sand
 - Policy forbids the data leaving your network, or you need ZDR for every part.
 - Cost needs a hard ceiling per user that `max_uses` alone does not give you.
 
-Many agents mix both: client tools for private data, a server tool for the public world. `03_mixed_client_and_server.py` does exactly that.
+Many agents mix both: client tools for private data, a server tool for the public world. `04_mixed_client_and_server.py` does exactly that.
 
 ## Mixing client and server tools in one turn
 
@@ -140,20 +205,27 @@ If Claude calls a client tool and a server tool in the same turn, the API does *
 
 ## Hands on
 
-### `01_web_search.py`: a tool you declare but never run
+### `01_build_your_own.py`: the mechanism, by hand
+
+`fetch_url` and `run_python` as client tools in the Lesson 01 dispatcher. Run 1 sends the same expense question as `03_code_execution.py` and asks before running each script (`--yes` skips the prompt). Run 2 asks about one allowed and one blocked URL, so you see an `is_error` result and the model working around it. `--check` runs the tools directly, with no API call. Compare its output with scripts 02 and 03: similar questions, a different place of execution.
+
+### `02_web_search.py`: a tool you declare but never run
 
 Two questions with web search. Prints every block by type so you see the `server_tool_use`, the result list, and text blocks whose citations name the source URLs. Run 2 limits search to `python.org` with `max_uses: 1`: any extra search shows up as a `max_uses_exceeded` result block, not an exception. Handles `pause_turn` by resending.
 
-### `02_code_execution.py`: a sandbox you do not have to build
+### `03_code_execution.py`: a sandbox you do not have to build
 
 Gives Claude the Acme expense policy and one trip, and asks it to compute the reimbursable amounts with Python. Prints each command and its stdout and `return_code`. Uses the raw SDK client because it needs the response's `container` id to resume a paused turn. Ends with the same numbers computed locally: check the model's arithmetic.
 
-### `03_mixed_client_and_server.py`: one loop, two kinds of tool
+### `04_mixed_client_and_server.py`: one loop, two kinds of tool
 
 A client tool (`search_handbook`, runs here over the private corpus) and web search (runs at Anthropic) answer one question that needs both. The loop treats `pause_turn` (resend) and `tool_use` (run your tools) differently and prints which calls were deferred.
 
 ## Key takeaways
 
+- A tool is your code behind a schema. Web fetch and code execution are a few lines each as client tools; the work is in the guards.
+- A subprocess with a timeout and an empty environment is not a sandbox. Real isolation of filesystem, network and CPU needs a container or a virtual machine.
+- Fetching a page is easy; finding and ranking the right page is what a search tool sells.
 - A server tool is declared with a dated `type`, run by Anthropic, and returned in the same response.
 - Never send a `tool_result` for a `server_tool_use`. Only `tool_use` blocks are yours.
 - `pause_turn` means resend unchanged with the same tools (and the same container). It is not an error.
@@ -164,6 +236,8 @@ A client tool (`search_handbook`, runs here over the private corpus) and web sea
 
 ## Common misconceptions
 
+- **"My subprocess with a timeout is a sandbox."** It runs as you, with your files and your network. Only the operating system (a container, a virtual machine) can take those away.
+- **"Web search is just fetch in a loop."** Without an index and ranking, the model has to guess URLs. The index is the product.
 - **"Server tools are a different API."** They are tools in the same `tools` list of the same Messages call.
 - **"If the search fails, I'll get an exception."** You get a 200 and an error block. Code that only catches exceptions never notices.
 - **"`pause_turn` means the model is done."** It means the server stopped its loop early. Resend to finish.

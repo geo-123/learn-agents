@@ -70,6 +70,8 @@ Both variants: the summary is all the model has of the compacted work, so if you
 
 Context editing (beta `context-management-2025-06-27`) **clears**; it does not summarize. Before the model reads the prompt, the API removes old tool results (or old thinking blocks) and puts a short placeholder where each one was.
 
+By hand, this is a loop over your `messages` that swaps the content of every `tool_result` older than the last few for `"[cleared]"`. Try it and you hit the reason the feature exists: that rewrites history, so the prompt cache misses from the first changed turn on (Lesson 02b) and, on current models, every later thinking block stops matching (Lesson 04). The API applies the same edit on its side, after the cache lookup and with the thinking chain accounted for, while the history you hold stays untouched.
+
 ```python
 context_management={"edits": [{
     "type": "clear_tool_uses_20250919",

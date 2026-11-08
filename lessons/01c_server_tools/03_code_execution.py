@@ -20,7 +20,7 @@ Cost: tokens, plus container time (5 minute minimum; each organization
 gets 1,550 free hours a month).
 
 Run:
-    uv run python lessons/01c_server_tools/02_code_execution.py
+    uv run python lessons/01c_server_tools/03_code_execution.py
 """
 from __future__ import annotations
 

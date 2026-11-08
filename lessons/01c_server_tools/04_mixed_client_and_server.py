@@ -16,7 +16,7 @@ What to watch for:
     * Only client tools ever reach your dispatcher.
 
 Run:
-    uv run python lessons/01c_server_tools/03_mixed_client_and_server.py
+    uv run python lessons/01c_server_tools/04_mixed_client_and_server.py
 """
 from __future__ import annotations
 

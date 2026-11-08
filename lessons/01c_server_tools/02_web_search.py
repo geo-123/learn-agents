@@ -20,7 +20,7 @@ Cost: each search is billed (USD 10 per 1,000) on top of tokens, and the
 results are read as input tokens. This script runs at most 4 searches.
 
 Run:
-    uv run python lessons/01c_server_tools/01_web_search.py
+    uv run python lessons/01c_server_tools/02_web_search.py
 """
 from __future__ import annotations
 

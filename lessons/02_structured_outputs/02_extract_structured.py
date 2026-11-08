@@ -4,11 +4,13 @@ Same task as 01_extract_prompt.py, but the API constrains the answer to our
 schema. Compare:
   - the schema is enforced by the API (constrained decoding), not by hope
   - typed object out, ready to use (`response.parsed`)
-  - no tool, no forced tool choice, no JSON parsing in our code
+  - no tool, no forced tool choice, no hoping the text parses
 
-Under the hood `chat(..., output_schema=Contact)` calls the SDK's
-`client.messages.parse(output_format=Contact)`, which sends
-`output_config={"format": {"type": "json_schema", "schema": ...}}`.
+Under the hood `chat(..., output_schema=Contact)` (see src/_llm.py) does four
+visible steps: Contact.model_json_schema(), trim it to the enforceable subset,
+send it as `output_config={"format": {"type": "json_schema", "schema": ...}}`,
+then json.loads and Contact.model_validate on the answer. The README explains
+how the API makes the answer match the schema: constrained decoding.
 
 Run:
     uv run python lessons/02_structured_outputs/02_extract_structured.py

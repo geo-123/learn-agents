@@ -31,7 +31,7 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-from anthropic import Anthropic
+from anthropic import Anthropic, transform_schema
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
@@ -177,25 +177,31 @@ def chat(
     if effort is not None:
         output_config["effort"] = effort
 
-    parsed: Any = None
-    if isinstance(output_schema, type) and issubclass(output_schema, BaseModel):
-        if output_config:
-            kwargs["output_config"] = output_config
-        msg = client().messages.parse(output_format=output_schema, **kwargs)
-        parsed = msg.parsed_output
-    else:
-        if output_schema is not None:
-            output_config["format"] = {"type": "json_schema", "schema": output_schema}
-        if output_config:
-            kwargs["output_config"] = output_config
-        if cache_control is not None:
-            kwargs["cache_control"] = cache_control
-        msg = client().messages.create(**kwargs)
+    # Structured output, done visibly (Lesson 02): turn the Pydantic model into
+    # a JSON schema in the subset the API can enforce, send it as
+    # output_config.format, then parse and validate the JSON ourselves.
+    # (The SDK's client.messages.parse(output_format=Model) does these same steps.)
+    model_class = output_schema if isinstance(output_schema, type) and issubclass(output_schema, BaseModel) else None
+    if model_class is not None:
+        schema = transform_schema(model_class.model_json_schema())
+        output_config["format"] = {"type": "json_schema", "schema": schema}
+    elif output_schema is not None:
+        output_config["format"] = {"type": "json_schema", "schema": output_schema}
+    if output_config:
+        kwargs["output_config"] = output_config
+    if cache_control is not None:
+        kwargs["cache_control"] = cache_control
+
+    msg = client().messages.create(**kwargs)
 
     content = [_block_to_dict(block) for block in msg.content]
-    if isinstance(output_schema, dict) and msg.stop_reason == "end_turn":
+    parsed: Any = None
+    if output_schema is not None and msg.stop_reason == "end_turn":
+        # The API guarantees this text is JSON matching the schema; a refusal or a
+        # max_tokens cut off has nothing complete to parse, so parsed stays None.
         text = "".join(b["text"] for b in content if b.get("type") == "text")
-        parsed = json.loads(text) if text else None
+        data = json.loads(text) if text else None
+        parsed = model_class.model_validate(data) if model_class is not None and data is not None else data
 
     usage = msg.usage
     return LLMResponse(

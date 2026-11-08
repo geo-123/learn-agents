@@ -1,7 +1,8 @@
-"""Lesson 01b: the events underneath a stream.
+"""Lesson 01b: the events underneath a stream, through the helper.
 
-`text_stream` hides the protocol. Iterating the stream itself shows every
-server sent event with the time it arrived:
+These are the events 01_sse_by_hand.py parsed from raw lines; here the
+SDK has already parsed them into typed objects. `text_stream` hides them.
+Iterating the stream itself shows every event with the time it arrived:
 
     message_start
       content_block_start  (thinking)    content_block_delta x N   content_block_stop
@@ -17,7 +18,7 @@ Thinking is requested with display "summarized" so the thinking deltas
 carry text you can watch arrive before the answer.
 
 Run:
-    uv run python lessons/01b_streaming/02_stream_events.py
+    uv run python lessons/01b_streaming/03_stream_events.py
 """
 from __future__ import annotations
 

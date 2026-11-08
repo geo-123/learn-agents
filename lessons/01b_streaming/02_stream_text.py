@@ -12,7 +12,7 @@ have returned, with usage and stop_reason. The script prints the time
 to the first text piece next to the total time.
 
 Run:
-    uv run python lessons/01b_streaming/01_stream_text.py
+    uv run python lessons/01b_streaming/02_stream_text.py
 """
 from __future__ import annotations
 

@@ -4,6 +4,8 @@ A hands on course that teaches the engineering discipline of building LLM agents
 
 **What this is:** A path from "I know Python" to "I can build a production agent" by *implementing* every concept yourself before reaching for a framework.
 
+**The rule every lesson follows:** build it by hand first, then use the managed version. The Claude API now does a lot for you (structured outputs, streaming helpers, web search and code execution, compaction, tool search, whole agent harnesses). Each of those lessons first builds the mechanism from the primitives (a token loop, a tool call, a message list) or points to the earlier lesson that did, explains what the managed feature does under the hood, and only then shows the feature, so you know what you are renting and what it costs.
+
 **What this is not:** A LangChain tutorial. A LangGraph tutorial. An Anthropic SDK tutorial. The lessons use Anthropic's SDK as a thin transport behind `src/_llm.py`, but the *patterns you learn* (tool dispatch, RAG, retries, MCP) apply to any model and any SDK.
 
 ## Learning path

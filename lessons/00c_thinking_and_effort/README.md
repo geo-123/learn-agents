@@ -6,6 +6,16 @@ Lesson 00b showed that current models think between tool calls. This lesson is a
 
 Every later lesson runs on these defaults, so it pays to see them once with your own eyes.
 
+## What thinking is, mechanically
+
+Start from Lesson 00: the model produces text one token at a time, and each token is conditioned on everything before it. "Thinking" is nothing more exotic than letting the model produce tokens *before* the answer that the answer can then condition on: working, checking, planning. A model trained to do this well spends those tokens where they help. You could approximate it yourself with a prompt ("reason step by step inside `<scratch>` tags, then answer") and a parser that cuts the scratch part out; that was the state of the art before reasoning models.
+
+What the API adds on top of that idea:
+
+- **A separate block.** Thinking tokens come back in their own `thinking` content block, so your code never confuses reasoning with the answer.
+- **A signature.** Each block carries a `signature`: a check the API computes over the block and, on current models, over the conversation before it. You cannot read the raw reasoning (by default you get an empty text or, on request, a summary), and you cannot forge or edit it: when you send the block back, the API verifies the signature. That is why blocks must go back unchanged and why editing earlier turns breaks them (Lesson 04).
+- **A trained budget sense.** Effort is not a hard cap like `max_tokens`; it is an instruction the model was trained to follow about how much work a request deserves. The hard caps stay yours: `max_tokens` per response, and your own loop budget (Lesson 05).
+
 ## Adaptive thinking is on by default
 
 Current models (Claude Haiku 5.5, Claude Opus 5.5 and their peers) think before they answer even when the request never mentions thinking. The model decides per request how much thinking it needs, and it can skip thinking entirely on easy requests. That is **adaptive** thinking: `thinking: {"type": "adaptive"}`, which is also what you get by leaving `thinking` out.

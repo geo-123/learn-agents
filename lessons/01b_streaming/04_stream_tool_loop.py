@@ -15,7 +15,7 @@ The loop is the Lesson 01 loop with three changes:
        appended to the history, exactly as in a non streamed loop.
 
 Run:
-    uv run python lessons/01b_streaming/03_stream_tool_loop.py
+    uv run python lessons/01b_streaming/04_stream_tool_loop.py
 """
 from __future__ import annotations
 

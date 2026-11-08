@@ -22,7 +22,7 @@ Model: claude-haiku-5-5, the cheapest model the programmatic tool calling
 docs list (Haiku 4.5 is not supported).
 
 Run:
-    uv run python lessons/09c_many_tools/02_programmatic_tool_calling.py
+    uv run python lessons/09c_many_tools/04_programmatic_tool_calling.py
 """
 from __future__ import annotations
 

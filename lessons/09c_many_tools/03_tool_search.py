@@ -23,8 +23,8 @@ Model: the course default. The tool search docs list every current
 model, Haiku 4.5 and Haiku 5.5 included.
 
 Run:
-    uv run python lessons/09c_many_tools/01_tool_search.py
-    uv run python lessons/09c_many_tools/01_tool_search.py --regex "I need to cancel leave request LR-1042"
+    uv run python lessons/09c_many_tools/03_tool_search.py
+    uv run python lessons/09c_many_tools/03_tool_search.py --regex "I need to cancel leave request LR-1042"
 """
 from __future__ import annotations
 
